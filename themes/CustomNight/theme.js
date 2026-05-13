@@ -23,6 +23,14 @@ const DEFAULT_ACCENT = {
   'notification': '#4687d6',
 };
 
+const LABEL_MAP = {
+  'sidebar': 'Sidebar',
+  'card': 'Cards',
+  'main-elevated': 'Elevated BG',
+  'highlight-elevated': 'Highlight',
+  'notification': 'Notifications',
+};
+
 function escapeForCssUrl(url) {
   return url.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\)/g, '\\)');
 }
@@ -167,25 +175,7 @@ function extractColorsFromImage(url) {
         resolve(null);
       }
     };
-    img.onerror = () => {
-      const img2 = new Image();
-      img2.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          const size = 64;
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img2, 0, 0, size, size);
-          const data = ctx.getImageData(0, 0, size, size).data;
-          resolve(quantizeColors(data));
-        } catch (e) {
-          resolve(null);
-        }
-      };
-      img2.onerror = () => resolve(null);
-      img2.src = url;
-    };
+    img.onerror = () => resolve(null);
     img.src = url;
   });
 }
@@ -215,6 +205,11 @@ function customBackgroundInit() {
       
       const content = document.createElement('div');
       content.style.cssText = 'display:flex;flex-direction:column;gap:12px;padding:10px;min-width:350px;font-family:sans-serif;';
+      const pickerRows = Object.entries(DEFAULT_ACCENT).map(([key, value]) => `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="flex:1;font-size:12px;color:#ccc;">${LABEL_MAP[key] || key}</span>
+            <input type="color" id="customnight-color-${key}" value="${value}" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
+          </div>`).join('');
       content.innerHTML = `
         <div style="font-size:16px;font-weight:bold;color:#fff;margin-bottom:8px;">Custom Night</div>
         <div style="display:flex;gap:0;margin-bottom:12px;border-bottom:2px solid #333;">
@@ -239,26 +234,7 @@ function customBackgroundInit() {
         <div id="customnight-colors-section" style="display:none;">
           <div style="font-size:13px;font-weight:bold;color:#fff;margin-bottom:6px;">Accent Colors</div>
           <div style="font-size:11px;color:#888;margin-bottom:8px;">Customize sidebar, cards, highlights and notification colors</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span style="flex:1;font-size:12px;color:#ccc;">Sidebar</span>
-            <input type="color" id="customnight-color-sidebar" value="#142b44" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span style="flex:1;font-size:12px;color:#ccc;">Cards</span>
-            <input type="color" id="customnight-color-card" value="#152238" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span style="flex:1;font-size:12px;color:#ccc;">Elevated BG</span>
-            <input type="color" id="customnight-color-main-elevated" value="#152238" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span style="flex:1;font-size:12px;color:#ccc;">Highlight</span>
-            <input type="color" id="customnight-color-highlight-elevated" value="#152238" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span style="flex:1;font-size:12px;color:#ccc;">Notifications</span>
-            <input type="color" id="customnight-color-notification" value="#4687d6" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
-          </div>
+          ${pickerRows}
           <button id="customnight-suggest-colors" style="width:100%;padding:8px;background:#1db954;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-bottom:6px;">Suggest from Background</button>
           <button id="customnight-reset-colors" style="width:100%;padding:8px;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;">Reset Colors to Default</button>
         </div>
@@ -402,15 +378,24 @@ function customBackgroundInit() {
           const url = urlInput?.value.trim() || currentUrl;
           const colors = {};
           for (const key of Object.keys(DEFAULT_ACCENT)) {
-            const picker = document.getElementById(`customnight-color-${key}`);
+            const picker = content.querySelector(`#customnight-color-${key}`);
             if (picker) colors[key] = picker.value;
           }
           setAccentColors(colors);
+          applyAccentColors(colors);
           if (url) {
             setCustomBackgroundUrl(url);
             setBackgroundSettings(bgSize, bgPositionX, bgPositionY);
+            const container = document.querySelector('.customnight-bg-container');
+            if (container) {
+              container.style.backgroundImage = `url("${escapeForCssUrl(url)}")`;
+              container.style.backgroundSize = bgSize + '%';
+              container.style.backgroundPosition = bgPositionX + '% ' + bgPositionY + '%';
+              container.style.backgroundRepeat = 'no-repeat';
+              container.style.backgroundColor = '#000';
+            }
           }
-          window.location.reload();
+          Spicetify.PopupModal.hide();
         });
       }
       
@@ -419,7 +404,36 @@ function customBackgroundInit() {
           setCustomBackgroundUrl(null);
           clearBackgroundSettings();
           clearAccentColors();
-          window.location.reload();
+          const container = document.querySelector('.customnight-bg-container');
+          if (container) {
+            container.style.backgroundImage = '';
+            container.style.backgroundSize = '';
+            container.style.backgroundPosition = '';
+            container.style.backgroundRepeat = '';
+            container.style.backgroundColor = '';
+            if (!container.querySelector('img[alt="Moon"]')) {
+              container.innerHTML = '';
+              const moonImg = document.createElement('img');
+              moonImg.src = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/1231630/moon2.png';
+              moonImg.alt = 'Moon';
+              container.appendChild(moonImg);
+              const stars = document.createElement('div');
+              stars.className = 'stars';
+              container.appendChild(stars);
+              const twinkling = document.createElement('div');
+              twinkling.className = 'twinkling';
+              container.appendChild(twinkling);
+              const clouds = document.createElement('div');
+              clouds.className = 'clouds';
+              container.appendChild(clouds);
+            }
+          }
+          const root = document.documentElement;
+          for (const key of Object.keys(DEFAULT_ACCENT)) {
+            root.style.removeProperty(`--spice-${key}`);
+            root.style.removeProperty(`--spice-rgb-${key}`);
+          }
+          Spicetify.PopupModal.hide();
         });
       }
       
@@ -439,17 +453,25 @@ function customBackgroundInit() {
             Spicetify?.showNotification?.('No background image to extract colors from', true);
             return;
           }
-          const colors = await extractColorsFromImage(url);
-          if (!colors) {
-            Spicetify?.showNotification?.('Could not extract colors (CORS issue?). Try uploading the image instead.', true);
-            return;
+          suggestBtn.disabled = true;
+          const originalText = suggestBtn.textContent;
+          suggestBtn.textContent = 'Extracting...';
+          try {
+            const colors = await extractColorsFromImage(url);
+            if (!colors) {
+              Spicetify?.showNotification?.('Could not extract colors (CORS issue?). Try uploading the image instead.', true);
+              return;
+            }
+            const pickerIds = Object.keys(DEFAULT_ACCENT);
+            for (let i = 0; i < Math.min(colors.length, pickerIds.length); i++) {
+              const picker = content.querySelector(`#customnight-color-${pickerIds[i]}`);
+              if (picker) picker.value = colors[i].hex;
+            }
+            Spicetify?.showNotification?.('Colors auto-detected! Click Apply to save.');
+          } finally {
+            suggestBtn.disabled = false;
+            suggestBtn.textContent = originalText;
           }
-          const pickerIds = ['sidebar', 'card', 'main-elevated', 'highlight-elevated', 'notification'];
-          for (let i = 0; i < Math.min(colors.length, pickerIds.length); i++) {
-            const picker = document.getElementById(`customnight-color-${pickerIds[i]}`);
-            if (picker) picker.value = colors[i].hex;
-          }
-          Spicetify?.showNotification?.('Colors auto-detected! Click Apply to save.');
         });
       }
       
@@ -457,7 +479,12 @@ function customBackgroundInit() {
       if (resetColorsBtn) {
         resetColorsBtn.addEventListener('click', () => {
           clearAccentColors();
-          window.location.reload();
+          const root = document.documentElement;
+          for (const key of Object.keys(DEFAULT_ACCENT)) {
+            root.style.removeProperty(`--spice-${key}`);
+            root.style.removeProperty(`--spice-rgb-${key}`);
+          }
+          Spicetify.PopupModal.hide();
         });
       }
       
