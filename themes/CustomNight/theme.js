@@ -13,6 +13,15 @@ function random(min, max) {
 
 const STORAGE_KEY = 'customnight-bg-url';
 const SETTINGS_KEY = 'customnight-bg-settings';
+const ACCENT_KEY = 'customnight-accent-colors';
+
+const DEFAULT_ACCENT = {
+  'main-elevated': '#152238',
+  'card': '#152238',
+  'sidebar': '#142b44',
+  'highlight-elevated': '#152238',
+  'notification': '#4687d6',
+};
 
 function escapeForCssUrl(url) {
   return url.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\)/g, '\\)');
@@ -63,6 +72,44 @@ function clearBackgroundSettings() {
   }
 }
 
+function getAccentColors() {
+  try {
+    const saved = localStorage.getItem(ACCENT_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setAccentColors(colors) {
+  try {
+    localStorage.setItem(ACCENT_KEY, JSON.stringify(colors));
+  } catch (e) {
+    console.error('Failed to save accent colors:', e);
+  }
+}
+
+function clearAccentColors() {
+  try {
+    localStorage.removeItem(ACCENT_KEY);
+  } catch (e) {
+    console.error('Failed to clear accent colors:', e);
+  }
+}
+
+function applyAccentColors(colors) {
+  if (!colors) return;
+  const root = document.documentElement;
+  for (const [key, value] of Object.entries(colors)) {
+    const hex = value.replace('#', '');
+    root.style.setProperty(`--spice-${key}`, `#${hex}`);
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    root.style.setProperty(`--spice-rgb-${key}`, `${r}, ${g}, ${b}`);
+  }
+}
+
 function customBackgroundInit() {
   const maxAttempts = 30;
   let attempts = 0;
@@ -107,6 +154,31 @@ function customBackgroundInit() {
           <span id="customnight-size-val" style="font-size:11px;color:#888;min-width:40px;">100%</span>
         </div>
         <div id="customnight-current" style="font-size:11px;color:#888;word-break:break-all;max-height:40px;overflow:hidden;"></div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #333;">
+          <div style="font-size:13px;font-weight:bold;color:#fff;margin-bottom:6px;">Accent Colors</div>
+          <div style="font-size:11px;color:#888;margin-bottom:8px;">Customize the accent colors (sidebar, cards, highlights)</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="flex:1;font-size:12px;color:#ccc;">Sidebar</span>
+            <input type="color" id="customnight-color-sidebar" value="#142b44" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="flex:1;font-size:12px;color:#ccc;">Cards</span>
+            <input type="color" id="customnight-color-card" value="#152238" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="flex:1;font-size:12px;color:#ccc;">Elevated BG</span>
+            <input type="color" id="customnight-color-main-elevated" value="#152238" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="flex:1;font-size:12px;color:#ccc;">Highlight</span>
+            <input type="color" id="customnight-color-highlight-elevated" value="#152238" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="flex:1;font-size:12px;color:#ccc;">Notifications</span>
+            <input type="color" id="customnight-color-notification" value="#4687d6" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
+          </div>
+          <button id="customnight-reset-colors" style="width:100%;padding:8px;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;">Reset Colors to Default</button>
+        </div>
       `;
       
       let bgPositionX = savedSettings.x;
@@ -241,11 +313,17 @@ function customBackgroundInit() {
       if (applyBtn) {
         applyBtn.addEventListener('click', () => {
           const url = urlInput?.value.trim() || currentUrl;
+          const colors = {};
+          for (const key of Object.keys(DEFAULT_ACCENT)) {
+            const picker = document.getElementById(`customnight-color-${key}`);
+            if (picker) colors[key] = picker.value;
+          }
+          setAccentColors(colors);
           if (url) {
             setCustomBackgroundUrl(url);
             setBackgroundSettings(bgSize, bgPositionX, bgPositionY);
-            window.location.reload();
           }
+          window.location.reload();
         });
       }
       
@@ -253,6 +331,23 @@ function customBackgroundInit() {
         resetBtn.addEventListener('click', () => {
           setCustomBackgroundUrl(null);
           clearBackgroundSettings();
+          clearAccentColors();
+          window.location.reload();
+        });
+      }
+      
+      const savedAccent = getAccentColors();
+      if (savedAccent) {
+        for (const [key, value] of Object.entries(savedAccent)) {
+          const picker = content.querySelector(`#customnight-color-${key}`);
+          if (picker) picker.value = value;
+        }
+      }
+      
+      const resetColorsBtn = content.querySelector('#customnight-reset-colors');
+      if (resetColorsBtn) {
+        resetColorsBtn.addEventListener('click', () => {
+          clearAccentColors();
           window.location.reload();
         });
       }
@@ -302,6 +397,11 @@ waitForElement(['.Root__top-container'], ([topContainer]) => {
     const clouds = document.createElement('div');
     clouds.className = 'clouds';
     backgroundContainer.appendChild(clouds);
+  }
+
+  const savedAccent = getAccentColors();
+  if (savedAccent) {
+    applyAccentColors(savedAccent);
   }
 
   function handleLabelChange() {
