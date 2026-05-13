@@ -110,6 +110,86 @@ function applyAccentColors(colors) {
   }
 }
 
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(c => Math.round(c).toString(16).padStart(2, '0')).join('');
+}
+
+function quantizeColors(data) {
+  const colorMap = {};
+  for (let i = 0; i < data.length; i += 8) {
+    const r = Math.round(data[i] / 32) * 32;
+    const g = Math.round(data[i + 1] / 32) * 32;
+    const b = Math.round(data[i + 2] / 32) * 32;
+    const key = `${r},${g},${b}`;
+    colorMap[key] = (colorMap[key] || 0) + 1;
+  }
+
+  const sorted = Object.entries(colorMap)
+    .map(([key, count]) => {
+      const [r, g, b] = key.split(',').map(Number);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return { r, g, b, hex: rgbToHex(r, g, b), brightness, count };
+    })
+    .filter(c => c.brightness > 50 && c.brightness < 220)
+    .sort((a, b) => b.count - a.count);
+
+  const unique = [];
+  for (const c of sorted) {
+    let isDup = false;
+    for (const u of unique) {
+      if (Math.sqrt((c.r - u.r) ** 2 + (c.g - u.g) ** 2 + (c.b - u.b) ** 2) < 50) {
+        isDup = true;
+        break;
+      }
+    }
+    if (!isDup) unique.push(c);
+    if (unique.length >= 5) break;
+  }
+
+  return unique.length > 0 ? unique : null;
+}
+
+function extractColorsFromImage(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const size = 64;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(0, 0, size, size).data;
+        resolve(quantizeColors(data));
+      } catch (e) {
+        resolve(null);
+      }
+    };
+    img.onerror = () => {
+      const img2 = new Image();
+      img2.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const size = 64;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img2, 0, 0, size, size);
+          const data = ctx.getImageData(0, 0, size, size).data;
+          resolve(quantizeColors(data));
+        } catch (e) {
+          resolve(null);
+        }
+      };
+      img2.onerror = () => resolve(null);
+      img2.src = url;
+    };
+    img.src = url;
+  });
+}
+
 function customBackgroundInit() {
   const maxAttempts = 30;
   let attempts = 0;
@@ -179,6 +259,7 @@ function customBackgroundInit() {
             <span style="flex:1;font-size:12px;color:#ccc;">Notifications</span>
             <input type="color" id="customnight-color-notification" value="#4687d6" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
           </div>
+          <button id="customnight-suggest-colors" style="width:100%;padding:8px;background:#1db954;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;margin-bottom:6px;">Suggest from Background</button>
           <button id="customnight-reset-colors" style="width:100%;padding:8px;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;">Reset Colors to Default</button>
         </div>
         <div style="display:flex;gap:8px;">
@@ -348,6 +429,28 @@ function customBackgroundInit() {
           const picker = content.querySelector(`#customnight-color-${key}`);
           if (picker) picker.value = value;
         }
+      }
+      
+      const suggestBtn = content.querySelector('#customnight-suggest-colors');
+      if (suggestBtn) {
+        suggestBtn.addEventListener('click', async () => {
+          const url = currentUrl || getCustomBackgroundUrl();
+          if (!url) {
+            Spicetify?.showNotification?.('No background image to extract colors from', true);
+            return;
+          }
+          const colors = await extractColorsFromImage(url);
+          if (!colors) {
+            Spicetify?.showNotification?.('Could not extract colors (CORS issue?). Try uploading the image instead.', true);
+            return;
+          }
+          const pickerIds = ['sidebar', 'card', 'main-elevated', 'highlight-elevated', 'notification'];
+          for (let i = 0; i < Math.min(colors.length, pickerIds.length); i++) {
+            const picker = document.getElementById(`customnight-color-${pickerIds[i]}`);
+            if (picker) picker.value = colors[i].hex;
+          }
+          Spicetify?.showNotification?.('Colors auto-detected! Click Apply to save.');
+        });
       }
       
       const resetColorsBtn = content.querySelector('#customnight-reset-colors');
