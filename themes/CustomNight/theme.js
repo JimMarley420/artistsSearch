@@ -136,27 +136,29 @@ function customBackgroundInit() {
       const content = document.createElement('div');
       content.style.cssText = 'display:flex;flex-direction:column;gap:12px;padding:10px;min-width:350px;font-family:sans-serif;';
       content.innerHTML = `
-        <div style="font-size:16px;font-weight:bold;color:#fff;margin-bottom:8px;">Custom Background</div>
-        <input type="text" id="customnight-url-input" placeholder="Enter image URL..." 
-          style="width:100%;padding:10px;border:1px solid #444;border-radius:4px;background:#222;color:#fff;font-size:13px;box-sizing:border-box;" />
-        <div style="display:flex;gap:8px;">
-          <button id="customnight-apply" style="flex:1;padding:10px;background:#1db954;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Apply</button>
-          <button id="customnight-reset" style="flex:1;padding:10px;background:#444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Reset</button>
+        <div style="font-size:16px;font-weight:bold;color:#fff;margin-bottom:8px;">Custom Night</div>
+        <div style="display:flex;gap:0;margin-bottom:12px;border-bottom:2px solid #333;">
+          <button id="customnight-tab-bg" style="flex:1;padding:8px 12px;background:#1db954;color:#fff;border:none;border-radius:4px 4px 0 0;cursor:pointer;font-size:13px;font-weight:bold;">Background</button>
+          <button id="customnight-tab-colors" style="flex:1;padding:8px 12px;background:#222;color:#888;border:none;border-radius:4px 4px 0 0;cursor:pointer;font-size:13px;">Accent Colors</button>
         </div>
-        <div style="text-align:center;color:#888;font-size:12px;margin:4px 0;">or upload from computer</div>
-        <input type="file" id="customnight-file-input" accept="image/*" style="color:#fff;font-size:12px;" />
-        <div style="font-size:11px;color:#666;margin-top:4px;">Recommended: 1920x1080 or 2560x1440</div>
-        <div style="font-size:11px;color:#666;margin-bottom:4px;">Scroll to zoom • drag to move</div>
-        <div id="customnight-preview" style="width:100%;height:200px;border-radius:4px;background-size:100%;background-position:center;background-repeat:no-repeat;background-color:#000;border:1px solid #333;overflow:hidden;cursor:grab;position:relative;"></div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span style="font-size:11px;color:#666;">Zoom:</span>
-          <input type="range" id="customnight-size" min="30" max="300" value="100" style="flex:1;" />
-          <span id="customnight-size-val" style="font-size:11px;color:#888;min-width:40px;">100%</span>
+        <div id="customnight-bg-section">
+          <input type="text" id="customnight-url-input" placeholder="Enter image URL..." 
+            style="width:100%;padding:10px;border:1px solid #444;border-radius:4px;background:#222;color:#fff;font-size:13px;box-sizing:border-box;" />
+          <div style="text-align:center;color:#888;font-size:12px;margin:8px 0 4px;">or upload from computer</div>
+          <input type="file" id="customnight-file-input" accept="image/*" style="color:#fff;font-size:12px;" />
+          <div style="font-size:11px;color:#666;margin-top:4px;">Recommended: 1920x1080 or 2560x1440</div>
+          <div style="font-size:11px;color:#666;margin-bottom:4px;">Scroll to zoom • drag to move</div>
+          <div id="customnight-preview" style="width:100%;height:200px;border-radius:4px;background-size:100%;background-position:center;background-repeat:no-repeat;background-color:#000;border:1px solid #333;overflow:hidden;cursor:grab;position:relative;"></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:11px;color:#666;">Zoom:</span>
+            <input type="range" id="customnight-size" min="30" max="300" value="100" style="flex:1;" />
+            <span id="customnight-size-val" style="font-size:11px;color:#888;min-width:40px;">100%</span>
+          </div>
+          <div id="customnight-current" style="font-size:11px;color:#888;word-break:break-all;max-height:40px;overflow:hidden;"></div>
         </div>
-        <div id="customnight-current" style="font-size:11px;color:#888;word-break:break-all;max-height:40px;overflow:hidden;"></div>
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #333;">
+        <div id="customnight-colors-section" style="display:none;">
           <div style="font-size:13px;font-weight:bold;color:#fff;margin-bottom:6px;">Accent Colors</div>
-          <div style="font-size:11px;color:#888;margin-bottom:8px;">Customize the accent colors (sidebar, cards, highlights)</div>
+          <div style="font-size:11px;color:#888;margin-bottom:8px;">Customize sidebar, cards, highlights and notification colors</div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
             <span style="flex:1;font-size:12px;color:#ccc;">Sidebar</span>
             <input type="color" id="customnight-color-sidebar" value="#142b44" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
@@ -178,6 +180,10 @@ function customBackgroundInit() {
             <input type="color" id="customnight-color-notification" value="#4687d6" style="width:36px;height:28px;padding:0;border:1px solid #555;border-radius:3px;background:transparent;cursor:pointer;" />
           </div>
           <button id="customnight-reset-colors" style="width:100%;padding:8px;background:#333;color:#ccc;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:12px;margin-top:6px;">Reset Colors to Default</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="customnight-apply" style="flex:1;padding:10px;background:#1db954;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Apply</button>
+          <button id="customnight-reset" style="flex:1;padding:10px;background:#444;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Reset</button>
         </div>
       `;
       
@@ -352,8 +358,38 @@ function customBackgroundInit() {
         });
       }
       
+      const tabBg = content.querySelector('#customnight-tab-bg');
+      const tabColors = content.querySelector('#customnight-tab-colors');
+      const bgSection = content.querySelector('#customnight-bg-section');
+      const colorsSection = content.querySelector('#customnight-colors-section');
+      
+      function switchTab(tab) {
+        if (tab === 'bg') {
+          tabBg.style.background = '#1db954';
+          tabBg.style.color = '#fff';
+          tabBg.style.fontWeight = 'bold';
+          tabColors.style.background = '#222';
+          tabColors.style.color = '#888';
+          tabColors.style.fontWeight = 'normal';
+          bgSection.style.display = 'block';
+          colorsSection.style.display = 'none';
+        } else {
+          tabColors.style.background = '#1db954';
+          tabColors.style.color = '#fff';
+          tabColors.style.fontWeight = 'bold';
+          tabBg.style.background = '#222';
+          tabBg.style.color = '#888';
+          tabBg.style.fontWeight = 'normal';
+          bgSection.style.display = 'none';
+          colorsSection.style.display = 'block';
+        }
+      }
+      
+      tabBg.addEventListener('click', () => switchTab('bg'));
+      tabColors.addEventListener('click', () => switchTab('colors'));
+      
       Spicetify.PopupModal.display({
-        title: 'Custom Background',
+        title: 'Custom Night',
         content: content,
       });
     });
