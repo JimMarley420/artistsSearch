@@ -4,6 +4,7 @@ import { join } from "@std/path";
 import { inlineCSSPlugin } from "./pluginInlineCSS.ts";
 import { reactCompilerPlugin } from "./reactCompilerPlugin.ts";
 import { spicetifyShims } from "./spicetifyShimsPlugin.ts";
+import { validateManifest } from "./manifestCheck.ts";
 
 const getEntryFile = async (folderPath: string): Promise<string | null> => {
   const srcDir = join(folderPath, "src");
@@ -226,6 +227,9 @@ const runBiome = async (): Promise<void> => {
 
 const runBuilds = async (): Promise<void> => {
   const startTime = performance.now();
+
+  console.log("Checking manifest...");
+  validateManifest();
 
   console.log("Building extensions...");
   await buildFolders();

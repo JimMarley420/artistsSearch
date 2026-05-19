@@ -12,6 +12,7 @@
     "test": "deno test --allow-all",
     "check": "deno task lint && deno task typecheck",
     "format": "deno run -A npm:@biomejs/biome@2.4.4 format --write",
+    "manifest:check": "deno run -A tasks/manifestCheck.ts",
     "theme:check": "deno run -A tasks/themeCheck.ts",
     "theme:lint": "deno run -A npm:stylelint@16.3.0 --config .stylelintrc.json \"themes/**/*.css\""
   },

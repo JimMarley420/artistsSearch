@@ -46,6 +46,15 @@ jobs:
           name: Theme lint
           command: deno task theme:lint
 
+  manifest-check:
+    docker:
+      - image: denoland/deno:latest
+    steps:
+      - checkout
+      - run:
+          name: Check manifest references
+          command: deno task manifest:check
+
   build:
     docker:
       - image: denoland/deno:latest
@@ -277,11 +286,13 @@ workflows:
             - typecheck
       - theme-check
       - theme-lint
+      - manifest-check
       - build:
           requires:
             - test
             - theme-check
             - theme-lint
+            - manifest-check
       - release:
           requires:
             - build
