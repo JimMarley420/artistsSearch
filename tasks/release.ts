@@ -124,96 +124,7 @@ const buildFolders = async (): Promise<void> => {
   await Promise.all(buildPromises);
 };
 
-const minifyCSS = async (content: string): Promise<string> => {
-  let minified = content;
-  minified = minified.replace(/\/\*[\s\S]*?\*\//g, "");
-  minified = minified.replace(/\s+/g, " ");
-  minified = minified.replace(/\s*{\s*/g, "{");
-  minified = minified.replace(/\s*}\s*/g, "}");
-  minified = minified.replace(/\s*:\s*/g, ":");
-  minified = minified.replace(/\s*;\s*/g, ";");
-  minified = minified.replace(/\s*,\s*/g, ",");
-  minified = minified.replace(/;\s*}/g, "}");
-  return minified.trim();
-};
 
-const minifyJS = async (content: string): Promise<string> => {
-  let minified = content;
-  minified = minified.replace(/\/\*[\s\S]*?\*\//g, "");
-  minified = minified.replace(/^[\t ]*\/\/.*$/gm, "");
-  minified = minified.replace(/^\s+$/gm, "");
-  minified = minified.replace(/\n\s*\n/g, "\n");
-  return minified.trim();
-};
-
-const buildTheme = async (themeName: string, themePath: string): Promise<void> => {
-  const OUT = join("dist", "themes", themeName);
-  await Deno.mkdir(OUT, { recursive: true });
-
-  const cssInPath = join(themePath, "user.css");
-  let cssExists = false;
-  try {
-    await Deno.stat(cssInPath);
-    cssExists = true;
-  } catch (err) {
-    if (!(err instanceof Deno.errors.NotFound)) throw err;
-  }
-  if (cssExists) {
-    const cssContent = await Deno.readTextFile(cssInPath);
-    const minifiedCSS = await minifyCSS(cssContent);
-    await Deno.writeTextFile(join(OUT, "user.css"), minifiedCSS);
-  }
-
-  const jsInPath = join(themePath, "theme.js");
-  let jsExists = false;
-  try {
-    await Deno.stat(jsInPath);
-    jsExists = true;
-  } catch (err) {
-    if (!(err instanceof Deno.errors.NotFound)) throw err;
-  }
-  if (jsExists) {
-    const jsContent = await Deno.readTextFile(jsInPath);
-    const minifiedJS = await minifyJS(jsContent);
-    await Deno.writeTextFile(join(OUT, "theme.js"), minifiedJS);
-  }
-
-  const filesToCopy = ["color.ini", "README.md", "assets"];
-  for (const file of filesToCopy) {
-    const srcPath = join(themePath, file);
-    let fileExists = false;
-    try {
-      await Deno.stat(srcPath);
-      fileExists = true;
-    } catch (err) {
-      if (!(err instanceof Deno.errors.NotFound)) throw err;
-    }
-    if (fileExists) {
-      const destPath = join(OUT, file);
-      if (file === "assets") {
-        await Deno.mkdir(destPath, { recursive: true });
-        for await (const assetEntry of Deno.readDir(srcPath)) {
-          await Deno.copyFile(join(srcPath, assetEntry.name), join(destPath, assetEntry.name));
-        }
-      } else {
-        await Deno.copyFile(srcPath, destPath);
-      }
-    }
-  }
-};
-
-const buildThemes = async (): Promise<void> => {
-  const buildPromises: Promise<void>[] = [];
-
-  for await (const dirEntry of Deno.readDir("themes")) {
-    if (dirEntry.isDirectory) {
-      const themePath = join("themes", dirEntry.name);
-      buildPromises.push(buildTheme(dirEntry.name, themePath));
-    }
-  }
-
-  await Promise.all(buildPromises);
-};
 
 const runBiome = async (): Promise<void> => {
   const formatCommand = new Deno.Command("deno", {
@@ -229,9 +140,6 @@ const runBuilds = async (): Promise<void> => {
 
   console.log("Building extensions...");
   await buildFolders();
-
-  console.log("Building themes...");
-  await buildThemes();
 
   console.log("Running biome...");
   await runBiome();
