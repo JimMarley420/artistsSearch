@@ -396,6 +396,8 @@ function customBackgroundInit() {
             }
           }
           Spicetify.PopupModal.hide();
+          Spicetify?.showNotification?.('Theme applied! Reloading Spotify...');
+          setTimeout(() => location.reload(), 1500);
         });
       }
       
