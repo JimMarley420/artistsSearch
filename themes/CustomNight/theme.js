@@ -333,11 +333,11 @@ function customBackgroundInit() {
       const fileInput = content.querySelector('#customnight-file-input');
       
       if (fileInput) {
-        fileInput.addEventListener('change', (e) => {
+        fileInput.addEventListener('change', async (e) => {
           const file = e.target.files?.[0];
           if (file) {
             const reader = new FileReader();
-            reader.onload = (ev) => {
+            reader.onload = async (ev) => {
               const dataUrl = ev.target?.result;
               if (typeof dataUrl === 'string') {
                 currentUrl = dataUrl;
@@ -348,6 +348,17 @@ function customBackgroundInit() {
                 if (sizeVal) sizeVal.textContent = '100%';
                 if (currentEl) currentEl.textContent = 'Current: Local file (base64)';
                 updatePreview();
+                if (confirm('Auto-detect accent colors from this image?')) {
+                  const extracted = await extractColorsFromImage(dataUrl);
+                  if (extracted) {
+                    const pickerIds = Object.keys(DEFAULT_ACCENT);
+                    for (let i = 0; i < Math.min(extracted.length, pickerIds.length); i++) {
+                      const picker = content.querySelector(`#customnight-color-${pickerIds[i]}`);
+                      if (picker) picker.value = extracted[i].hex;
+                    }
+                    Spicetify?.showNotification?.('Colors auto-detected from image!');
+                  }
+                }
               }
             };
             reader.readAsDataURL(file);
