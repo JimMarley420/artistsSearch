@@ -31,6 +31,28 @@ const LABEL_MAP = {
   'notification': 'Notifications',
 };
 
+function compressImage(dataUrl, maxDimension = 1920, quality = 0.8) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        const ratio = Math.min(maxDimension / width, maxDimension / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 function escapeForCssUrl(url) {
   return url.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\)/g, '\\)');
 }
@@ -51,7 +73,11 @@ function setCustomBackgroundUrl(url) {
       localStorage.removeItem(STORAGE_KEY);
     }
   } catch (e) {
-    console.error('Failed to save custom background:', e);
+    if (e.name === 'QuotaExceededError') {
+      Spicetify?.showNotification?.('Image too large after compression. Try a smaller image or use a URL instead.', true);
+    } else {
+      console.error('Failed to save custom background:', e);
+    }
   }
 }
 
@@ -336,32 +362,38 @@ function customBackgroundInit() {
         fileInput.addEventListener('change', async (e) => {
           const file = e.target.files?.[0];
           if (file) {
-            const reader = new FileReader();
-            reader.onload = async (ev) => {
-              const dataUrl = ev.target?.result;
-              if (typeof dataUrl === 'string') {
-                currentUrl = dataUrl;
-                bgPositionX = 50;
-                bgPositionY = 50;
-                bgSize = 100;
-                if (sizeSlider) sizeSlider.value = 100;
-                if (sizeVal) sizeVal.textContent = '100%';
-                if (currentEl) currentEl.textContent = 'Current: Local file (base64)';
-                updatePreview();
-                if (confirm('Auto-detect accent colors from this image?')) {
-                  const extracted = await extractColorsFromImage(dataUrl);
-                  if (extracted) {
-                    const pickerIds = Object.keys(DEFAULT_ACCENT);
-                    for (let i = 0; i < Math.min(extracted.length, pickerIds.length); i++) {
-                      const picker = content.querySelector(`#customnight-color-${pickerIds[i]}`);
-                      if (picker) picker.value = extracted[i].hex;
-                    }
-                    Spicetify?.showNotification?.('Colors auto-detected from image!');
+            if (file.size > 30 * 1024 * 1024) {
+              Spicetify?.showNotification?.('Large image (>30MB): compression may take a moment...', false);
+            }
+            const objectUrl = URL.createObjectURL(file);
+            try {
+              const compressed = await compressImage(objectUrl);
+              if (!compressed || compressed === objectUrl) {
+                Spicetify?.showNotification?.('Could not process this image. Try a different format.', true);
+                return;
+              }
+              currentUrl = compressed;
+              bgPositionX = 50;
+              bgPositionY = 50;
+              bgSize = 100;
+              if (sizeSlider) sizeSlider.value = 100;
+              if (sizeVal) sizeVal.textContent = '100%';
+              if (currentEl) currentEl.textContent = 'Current: Local file';
+              updatePreview();
+              if (confirm('Auto-detect accent colors from this image?')) {
+                const extracted = await extractColorsFromImage(compressed);
+                if (extracted) {
+                  const pickerIds = Object.keys(DEFAULT_ACCENT);
+                  for (let i = 0; i < Math.min(extracted.length, pickerIds.length); i++) {
+                    const picker = content.querySelector(`#customnight-color-${pickerIds[i]}`);
+                    if (picker) picker.value = extracted[i].hex;
                   }
+                  Spicetify?.showNotification?.('Colors auto-detected from image!');
                 }
               }
-            };
-            reader.readAsDataURL(file);
+            } finally {
+              URL.revokeObjectURL(objectUrl);
+            }
           }
         });
       }
