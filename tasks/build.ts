@@ -5,6 +5,7 @@ import { join } from "@std/path";
 
 import { inlineCSSPlugin } from "./pluginInlineCSS.ts";
 import { spicetifyShims } from "./spicetifyShimsPlugin.ts";
+import { validateManifest } from "./manifestCheck.ts";
 
 const APPDATA: string = Deno.env.get("APPDATA") || "";
 const LOCALAPPDATA: string = Deno.env.get("LOCALAPPDATA") || "";
@@ -177,6 +178,10 @@ function startSpotify(): void {
 
 async function runBuilds(): Promise<void> {
   const startTime = performance.now();
+
+  console.log("Checking manifest...");
+  validateManifest();
+
   await buildFolders();
 
   if (Deno.args.includes("--dev")) {
