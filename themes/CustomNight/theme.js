@@ -31,6 +31,37 @@ const LABEL_MAP = {
   'notification': 'Notifications',
 };
 
+function compressImage(dataUrl, maxDimension = 1920, quality = 0.8, fileType) {
+  if (fileType === 'image/gif') {
+    return Promise.resolve(dataUrl);
+  }
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          const ratio = Math.min(maxDimension / width, maxDimension / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Failed to get canvas 2d context');
+        ctx.drawImage(img, 0, 0, width, height);
+        const outputType = fileType === 'image/png' ? 'image/png' : 'image/jpeg';
+        resolve(canvas.toDataURL(outputType, quality));
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = () => reject(new Error('Failed to load image for compression'));
+    img.src = dataUrl;
+  });
+}
+
 function escapeForCssUrl(url) {
   return url.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\)/g, '\\)');
 }
@@ -50,8 +81,14 @@ function setCustomBackgroundUrl(url) {
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }
+    return true;
   } catch (e) {
-    console.error('Failed to save custom background:', e);
+    if (e.name === 'QuotaExceededError') {
+      Spicetify?.showNotification?.('Image too large after compression. Try a smaller image or use a URL instead.', true);
+    } else {
+      console.error('Failed to save custom background:', e);
+    }
+    return false;
   }
 }
 
@@ -335,33 +372,53 @@ function customBackgroundInit() {
       if (fileInput) {
         fileInput.addEventListener('change', async (e) => {
           const file = e.target.files?.[0];
-          if (file) {
+          if (!file) return;
+
+          const handleUploadedImage = (url) => {
+            currentUrl = url;
+            bgPositionX = 50;
+            bgPositionY = 50;
+            bgSize = 100;
+            if (sizeSlider) sizeSlider.value = 100;
+            if (sizeVal) sizeVal.textContent = '100%';
+            if (currentEl) currentEl.textContent = 'Current: Local file';
+            updatePreview();
+          };
+
+          if (file.type === 'image/gif') {
             const reader = new FileReader();
-            reader.onload = async (ev) => {
+            reader.onload = (ev) => {
               const dataUrl = ev.target?.result;
               if (typeof dataUrl === 'string') {
-                currentUrl = dataUrl;
-                bgPositionX = 50;
-                bgPositionY = 50;
-                bgSize = 100;
-                if (sizeSlider) sizeSlider.value = 100;
-                if (sizeVal) sizeVal.textContent = '100%';
-                if (currentEl) currentEl.textContent = 'Current: Local file (base64)';
-                updatePreview();
-                if (confirm('Auto-detect accent colors from this image?')) {
-                  const extracted = await extractColorsFromImage(dataUrl);
-                  if (extracted) {
-                    const pickerIds = Object.keys(DEFAULT_ACCENT);
-                    for (let i = 0; i < Math.min(extracted.length, pickerIds.length); i++) {
-                      const picker = content.querySelector(`#customnight-color-${pickerIds[i]}`);
-                      if (picker) picker.value = extracted[i].hex;
-                    }
-                    Spicetify?.showNotification?.('Colors auto-detected from image!');
-                  }
-                }
+                handleUploadedImage(dataUrl);
               }
             };
             reader.readAsDataURL(file);
+            return;
+          }
+
+          if (file.size > 30 * 1024 * 1024) {
+            Spicetify?.showNotification?.('Large image (>30MB): compression may take a moment...', false);
+          }
+          const objectUrl = URL.createObjectURL(file);
+          try {
+            const compressed = await compressImage(objectUrl, 1920, 0.8, file.type);
+            handleUploadedImage(compressed);
+            if (confirm('Auto-detect accent colors from this image?')) {
+              const extracted = await extractColorsFromImage(compressed);
+              if (extracted) {
+                const pickerIds = Object.keys(DEFAULT_ACCENT);
+                for (let i = 0; i < Math.min(extracted.length, pickerIds.length); i++) {
+                  const picker = content.querySelector(`#customnight-color-${pickerIds[i]}`);
+                  if (picker) picker.value = extracted[i].hex;
+                }
+                Spicetify?.showNotification?.('Colors auto-detected from image!');
+              }
+            }
+          } catch (err) {
+            Spicetify?.showNotification?.('Could not process this image. Try a different format.', true);
+          } finally {
+            URL.revokeObjectURL(objectUrl);
           }
         });
       }
@@ -395,7 +452,8 @@ function customBackgroundInit() {
           setAccentColors(colors);
           applyAccentColors(colors);
           if (url) {
-            setCustomBackgroundUrl(url);
+            const saved = setCustomBackgroundUrl(url);
+            if (!saved) return;
             setBackgroundSettings(bgSize, bgPositionX, bgPositionY);
             const container = document.querySelector('.customnight-bg-container');
             if (container) {
