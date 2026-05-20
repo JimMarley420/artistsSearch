@@ -18,8 +18,8 @@ function isLocalPath(path: string): boolean {
 export function validateManifest(): void {
   const manifestPath = "manifest.json";
   if (!existsSync(manifestPath)) {
-    console.log("\x1b[33mNo manifest.json found, skipping manifest check\x1b[0m");
-    return;
+    console.error("\x1b[31mmanifest.json is missing; manifest is required for validation\x1b[0m");
+    Deno.exit(1);
   }
 
   const content = Deno.readTextFileSync(manifestPath);
