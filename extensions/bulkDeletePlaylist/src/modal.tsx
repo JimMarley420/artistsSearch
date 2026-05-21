@@ -513,6 +513,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       return;
     }
     
+    emptyState.style.display = "none";
     trackList.style.position = "relative";
     
     if (!scrollListenerAdded) {
