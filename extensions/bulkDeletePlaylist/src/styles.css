@@ -200,6 +200,14 @@
   min-height: 400px;
 }
 
+.bulk-delete-virtual-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  will-change: transform;
+}
+
 .bulk-delete-empty {
   display: flex;
   align-items: center;

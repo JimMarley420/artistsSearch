@@ -168,7 +168,11 @@ function createPlayingIndicator(): HTMLElement {
   return indicator;
 }
 
-export async function getPlaylistTracks(playlistUri: string): Promise<Track[]> {
+export async function getPlaylistTracks(
+  playlistUri: string,
+  onProgress?: (tracks: Track[], totalLoaded: number) => void,
+  checkUpTo?: number
+): Promise<Track[]> {
   let tracks: Track[] = [];
   
   try {
@@ -178,20 +182,16 @@ export async function getPlaylistTracks(playlistUri: string): Promise<Track[]> {
       throw new Error("PlaylistAPI not available");
     }
     
-    const pageSize = 500;
-    const maxTracks = 500;
+    const pageSize = 200;
     let offset = 0;
     
-    while (tracks.length <= maxTracks) {
-      const probeLimit = (tracks.length === 0 && offset === 0) ? pageSize + 1 : pageSize;
-      const currentLimit = Math.min(probeLimit, maxTracks - tracks.length + 1);
-      
+    while (true) {
       const response = await PlaylistAPI.getContents(playlistUri, {
         offset: offset,
-        limit: currentLimit,
+        limit: pageSize,
       });
       
-      if (!response?.items) {
+      if (!response?.items?.length) {
         break;
       }
       
@@ -237,16 +237,17 @@ export async function getPlaylistTracks(playlistUri: string): Promise<Track[]> {
         }
       }
       
-      if (response.items.length < currentLimit || tracks.length > maxTracks) {
+      onProgress?.(tracks, tracks.length);
+      
+      if (checkUpTo && tracks.length >= checkUpTo) {
         break;
       }
       
-      offset += currentLimit;
-    }
-    
-    if (tracks.length > maxTracks) {
-      tracks = tracks.slice(0, maxTracks);
-      Spicetify.showNotification(`Showing first ${maxTracks} tracks. Playlist is larger.`, false, 5000);
+      if (response.items.length < pageSize) {
+        break;
+      }
+      
+      offset += pageSize;
     }
   } catch (e) {
     console.error("Error fetching playlist tracks:", e);
@@ -403,6 +404,8 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   const getSelectionKey = (track: Track) => track.uid || track.uri;
   
   const modal = document.createElement("div");
+  let renderedTracksRef: Track[] = [];
+  let scrollListenerAdded = false;
   modal.className = "bulk-delete-modal";
   
   const cleanupAndClose = () => {
@@ -493,10 +496,15 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   emptyState.textContent = "Select a playlist first";
   trackList.appendChild(emptyState);
   
+  const ITEM_HEIGHT = 72;
+  const BUFFER = 8;
+  
   function renderTracks(tracks: Track[]) {
-    trackList.innerHTML = "";
+    const shouldResetScroll = renderedTracksRef !== tracks;
+    renderedTracksRef = tracks;
     
     if (tracks.length === 0) {
+      trackList.innerHTML = "";
       const emptyMsg = searchInput.value ? "No tracks found" : "Playlist is empty";
       const empty = document.createElement("div");
       empty.className = "bulk-delete-empty";
@@ -505,15 +513,56 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       return;
     }
     
+    trackList.style.position = "relative";
+    
+    if (!scrollListenerAdded) {
+      scrollListenerAdded = true;
+      trackList.addEventListener("scroll", () => {
+        renderTracks(renderedTracksRef);
+      });
+    }
+    
+    let spacer = trackList.querySelector(".bulk-delete-virtual-spacer") as HTMLElement;
+    if (!spacer) {
+      spacer = document.createElement("div");
+      spacer.className = "bulk-delete-virtual-spacer";
+      trackList.appendChild(spacer);
+    }
+    
+    let windowEl = trackList.querySelector(".bulk-delete-virtual-window") as HTMLElement;
+    if (!windowEl) {
+      windowEl = document.createElement("div");
+      windowEl.className = "bulk-delete-virtual-window";
+      trackList.appendChild(windowEl);
+    }
+    
+    if (shouldResetScroll) {
+      trackList.scrollTop = 0;
+    }
+    
+    const totalHeight = tracks.length * ITEM_HEIGHT;
+    spacer.style.height = `${totalHeight}px`;
+    spacer.style.pointerEvents = "none";
+    
+    const scrollTop = trackList.scrollTop;
+    const viewportHeight = trackList.clientHeight;
+    
+    const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER);
+    const endIndex = Math.min(tracks.length, Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + BUFFER);
+    
+    windowEl.style.transform = `translateY(${startIndex * ITEM_HEIGHT}px)`;
+    windowEl.innerHTML = "";
+    
     const currentPlayingUri = (Spicetify as any).Player?.data?.item?.uri || null;
     
-    for (let i = 0; i < tracks.length; i++) {
+    for (let i = startIndex; i < endIndex; i++) {
       const track = tracks[i];
       const isPlaying = currentPlayingUri === track.uri;
       
       const item = document.createElement("div");
       item.className = "bulk-delete-item" + (selectedSet.has(getSelectionKey(track)) ? " selected" : "");
       item.setAttribute("data-uri", track.uri);
+      item.setAttribute("data-index", i.toString());
       item.style.cursor = "pointer";
       
       item.addEventListener("click", (e) => {
@@ -604,7 +653,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       item.appendChild(image);
       item.appendChild(info);
       item.appendChild(playback);
-      trackList.appendChild(item);
+      windowEl.appendChild(item);
     }
   }
   
@@ -640,7 +689,10 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
     trackList.appendChild(emptyState);
     
     try {
-      currentTracks = await getPlaylistTracks(playlistUri);
+      currentTracks = await getPlaylistTracks(playlistUri, (tracks, totalLoaded) => {
+        if (requestToken !== currentPlaylistUri) return;
+        emptyState.textContent = `Loaded ${totalLoaded} track(s)...`;
+      });
       if (requestToken !== currentPlaylistUri) return;
       filteredTracks = [...currentTracks];
       selectedSet.clear();
@@ -677,7 +729,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
           const preferred = allPlaylists.find(p => p.uri === currentPlaylistUri);
           if (preferred) {
             try {
-              const tracks = await getPlaylistTracks(preferred.uri);
+              const tracks = await getPlaylistTracks(preferred.uri, undefined, 500);
               const trackUrisSet = new Set(tracks.map(t => t.uri));
               const hasSelectedTrack = trackUris.some(uri => trackUrisSet.has(uri));
               if (hasSelectedTrack) {
@@ -691,7 +743,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
           for (const playlist of allPlaylists) {
             if (playlist.uri === currentPlaylistUri) continue;
             try {
-              const tracks = await getPlaylistTracks(playlist.uri);
+              const tracks = await getPlaylistTracks(playlist.uri, undefined, 500);
               const trackUrisSet = new Set(tracks.map(t => t.uri));
               const hasSelectedTrack = trackUris.some(uri => trackUrisSet.has(uri));
               if (hasSelectedTrack) {
@@ -708,7 +760,6 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
           await loadPlaylistTracks(foundPlaylist.uri);
           
           selectedSet.clear();
-          const currentKeys = new Set(currentTracks.map(t => getSelectionKey(t)));
           for (const uri of trackUris) {
             const track = currentTracks.find(t => t.uri === uri);
             if (track) {
@@ -716,17 +767,14 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
             }
           }
           
-          trackList.querySelectorAll(".bulk-delete-item").forEach(item => {
-            const uri = item.getAttribute("data-uri");
-            const checkbox = item.querySelector(".bulk-delete-checkbox") as HTMLInputElement;
-            const track = currentTracks.find(t => t.uri === uri);
-            if (track && selectedSet.has(getSelectionKey(track))) {
-              item.classList.add("selected");
-              checkbox.checked = true;
-            }
-          });
-          
+          renderTracks(filteredTracks);
           updateButtonState();
+          
+          const scrollIndex = filteredTracks.findIndex(t => selectedSet.has(getSelectionKey(t)));
+          if (scrollIndex > 0) {
+            const viewportHeight = trackList.clientHeight || 400;
+            trackList.scrollTop = Math.max(0, scrollIndex * ITEM_HEIGHT - viewportHeight / 2 + ITEM_HEIGHT / 2);
+          }
         }
       }
     } catch (e) {
@@ -757,7 +805,15 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
     }
   });
   
-  searchInput.addEventListener("input", filterTracks);
+  let searchTimeout: number | null = null;
+  searchInput.addEventListener("input", () => {
+    if (searchTimeout) {
+      window.clearTimeout(searchTimeout);
+    }
+    searchTimeout = window.setTimeout(() => {
+      filterTracks();
+    }, 150);
+  });
   
   const buttonContainer = document.createElement("div");
   buttonContainer.className = "bulk-delete-buttons";
@@ -768,19 +824,10 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   selectAllBtn.addEventListener("click", () => {
     if (selectedSet.size === filteredTracks.length) {
       selectedSet.clear();
-      trackList.querySelectorAll(".bulk-delete-item").forEach(item => {
-        item.classList.remove("selected");
-        const checkbox = item.querySelector(".bulk-delete-checkbox") as HTMLInputElement;
-        if (checkbox) checkbox.checked = false;
-      });
     } else {
       filteredTracks.forEach(t => selectedSet.add(getSelectionKey(t)));
-      trackList.querySelectorAll(".bulk-delete-item").forEach(item => {
-        item.classList.add("selected");
-        const checkbox = item.querySelector(".bulk-delete-checkbox") as HTMLInputElement;
-        if (checkbox) checkbox.checked = true;
-      });
     }
+    renderTracks(filteredTracks);
     updateButtonState();
   });
   
@@ -887,17 +934,13 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       const trackNumber = item.querySelector(".bulk-delete-track-number");
       if (!trackNumber) return;
       
-      const playbacks = item.querySelectorAll(".bulk-delete-playback-controls");
-      let itemUri = "";
-      playbacks.forEach((pb: any) => {
-        itemUri = pb.dataset.uri || "";
-      });
+      const uri = item.getAttribute("data-uri");
       
-      if (itemUri === currentUri) {
+      if (uri === currentUri) {
         trackNumber.innerHTML = `<div class="bulk-delete-playing-indicator"></div>`;
       } else {
-        const idx = Array.from(trackList.querySelectorAll(".bulk-delete-item")).indexOf(item) + 1;
-        trackNumber.textContent = idx.toString();
+        const idx = parseInt(item.getAttribute("data-index"), 10);
+        trackNumber.textContent = (idx + 1).toString();
       }
     });
   };
