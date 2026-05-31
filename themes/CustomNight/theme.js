@@ -14,6 +14,7 @@ function random(min, max) {
 const STORAGE_KEY = 'customnight-bg-url';
 const SETTINGS_KEY = 'customnight-bg-settings';
 const ACCENT_KEY = 'customnight-accent-colors';
+const IDB_FLAG_KEY = 'customnight-bg-idb';
 
 const DEFAULT_ACCENT = {
   'main-elevated': '#152238',
@@ -30,6 +31,45 @@ const LABEL_MAP = {
   'highlight-elevated': 'Highlight',
   'notification': 'Notifications',
 };
+
+function openImageDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('customnight-db', 1);
+    req.onupgradeneeded = (e) => e.target.result.createObjectStore('images');
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function saveImageToDB(blob) {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').put(blob, 'background');
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = (e) => { db.close(); reject(e.target.error); };
+  });
+}
+
+async function getImageFromDB() {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('images', 'readonly');
+    const req = tx.objectStore('images').get('background');
+    req.onsuccess = (e) => { db.close(); resolve(e.target.result || null); };
+    req.onerror = (e) => { db.close(); reject(e.target.error); };
+  });
+}
+
+async function removeImageFromDB() {
+  const db = await openImageDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('images', 'readwrite');
+    tx.objectStore('images').delete('background');
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = (e) => { db.close(); reject(e.target.error); };
+  });
+}
 
 function compressImage(dataUrl, maxDimension = 1920, quality = 0.8, fileType) {
   if (fileType === 'image/gif') {
@@ -76,11 +116,18 @@ function getCustomBackgroundUrl() {
 
 function setCustomBackgroundUrl(url) {
   try {
-    if (url) {
-      localStorage.setItem(STORAGE_KEY, url);
-    } else {
+    if (!url) {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(IDB_FLAG_KEY);
+      return true;
     }
+    if (url.startsWith('blob:')) {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.setItem(IDB_FLAG_KEY, '1');
+      return true;
+    }
+    localStorage.setItem(STORAGE_KEY, url);
+    localStorage.removeItem(IDB_FLAG_KEY);
     return true;
   } catch (e) {
     if (e.name === 'QuotaExceededError') {
@@ -217,6 +264,8 @@ function extractColorsFromImage(url) {
   });
 }
 
+let currentPreviewUrl = null;
+
 function customBackgroundInit() {
   const maxAttempts = 30;
   let attempts = 0;
@@ -235,10 +284,23 @@ function customBackgroundInit() {
     
     const icon = `<svg data-encore-id="icon" role="img" aria-hidden="true" class="e-10180-icon" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"></path></svg>`;
 
-    new Spicetify.Topbar.Button('Custom Background', icon, () => {
-      const currentBg = getCustomBackgroundUrl();
-      const escapedBg = currentBg ? escapeForCssUrl(currentBg) : '';
+    new Spicetify.Topbar.Button('Custom Background', icon, async () => {
       const savedSettings = getBackgroundSettings();
+      const currentBg = getCustomBackgroundUrl();
+      const idbFlag = localStorage.getItem(IDB_FLAG_KEY);
+      let resolvedBg = currentBg || '';
+      if (!resolvedBg && idbFlag === '1') {
+        try {
+          const blob = await getImageFromDB();
+          if (blob) {
+            if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); }
+            resolvedBg = URL.createObjectURL(blob);
+            currentPreviewUrl = resolvedBg;
+          }
+        } catch (e) {
+          console.error('[CustomNight] Failed to load GIF for preview:', e);
+        }
+      }
       
       const content = document.createElement('div');
       content.style.cssText = 'display:flex;flex-direction:column;gap:12px;padding:10px;min-width:350px;font-family:sans-serif;';
@@ -284,7 +346,7 @@ function customBackgroundInit() {
       let bgPositionX = savedSettings.x;
       let bgPositionY = savedSettings.y;
       let bgSize = savedSettings.size || 100;
-      let currentUrl = currentBg || '';
+      let currentUrl = resolvedBg;
       let isDragging = false;
       let dragStartX, dragStartY, startPosX, startPosY;
       
@@ -308,7 +370,10 @@ function customBackgroundInit() {
         bgPositionY = savedSettings.y !== undefined ? savedSettings.y : 50;
         bgSize = savedSettings.size || 100;
         if (currentEl) {
-          const displayUrl = currentUrl.startsWith('data:') ? `Local file (base64)` : currentUrl;
+          let displayUrl;
+          if (currentUrl.startsWith('data:')) displayUrl = 'Local file (compressed)';
+          else if (currentUrl.startsWith('blob:')) displayUrl = 'Local GIF (stored in browser)';
+          else displayUrl = currentUrl;
           currentEl.textContent = `Current: ${displayUrl}`;
         }
       }
@@ -386,14 +451,16 @@ function customBackgroundInit() {
           };
 
           if (file.type === 'image/gif') {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              const dataUrl = ev.target?.result;
-              if (typeof dataUrl === 'string') {
-                handleUploadedImage(dataUrl);
-              }
-            };
-            reader.readAsDataURL(file);
+            try {
+              Spicetify?.showNotification?.('Saving GIF locally, please wait...', false);
+              await saveImageToDB(file);
+              if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); }
+              const blobUrl = URL.createObjectURL(file);
+              currentPreviewUrl = blobUrl;
+              handleUploadedImage(blobUrl);
+            } catch (err) {
+              Spicetify?.showNotification?.('Could not save GIF: ' + err.message, true);
+            }
             return;
           }
 
@@ -471,10 +538,12 @@ function customBackgroundInit() {
       }
       
       if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
+        resetBtn.addEventListener('click', async () => {
           setCustomBackgroundUrl(null);
           clearBackgroundSettings();
           clearAccentColors();
+          await removeImageFromDB().catch(() => {});
+          if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); currentPreviewUrl = null; }
           const container = document.querySelector('.customnight-bg-container');
           if (container) {
             container.style.backgroundImage = '';
@@ -608,32 +677,46 @@ waitForElement(['.Root__top-container'], ([topContainer]) => {
   rootElement.style.zIndex = '0';
 
   const customBgUrl = getCustomBackgroundUrl();
+  const idbFlag = localStorage.getItem(IDB_FLAG_KEY);
   const settings = getBackgroundSettings();
-  
-  if (customBgUrl) {
-    const escaped = escapeForCssUrl(customBgUrl);
+
+  function applyBgToContainer(url) {
+    const escaped = escapeForCssUrl(url);
     backgroundContainer.style.backgroundImage = `url("${escaped}")`;
     backgroundContainer.style.backgroundSize = settings.size + '%';
     backgroundContainer.style.backgroundPosition = settings.x + '% ' + settings.y + '%';
     backgroundContainer.style.backgroundRepeat = 'no-repeat';
     backgroundContainer.style.backgroundColor = '#000';
-  } else {
+  }
+
+  function renderDefaultBackground() {
     const moonImg = document.createElement('img');
     moonImg.src = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/1231630/moon2.png';
     moonImg.alt = 'Moon';
     backgroundContainer.appendChild(moonImg);
-
     const stars = document.createElement('div');
     stars.className = 'stars';
     backgroundContainer.appendChild(stars);
-
     const twinkling = document.createElement('div');
     twinkling.className = 'twinkling';
     backgroundContainer.appendChild(twinkling);
-
     const clouds = document.createElement('div');
     clouds.className = 'clouds';
     backgroundContainer.appendChild(clouds);
+  }
+
+  if (customBgUrl) {
+    applyBgToContainer(customBgUrl);
+  } else if (idbFlag === '1') {
+    getImageFromDB().then(blob => {
+      if (!blob) { renderDefaultBackground(); return; }
+      applyBgToContainer(URL.createObjectURL(blob));
+    }).catch(err => {
+      console.error('[CustomNight] Failed to load background from IndexedDB:', err);
+      renderDefaultBackground();
+    });
+  } else {
+    renderDefaultBackground();
   }
 
   const savedAccent = getAccentColors();
