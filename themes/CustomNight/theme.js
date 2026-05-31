@@ -264,6 +264,8 @@ function extractColorsFromImage(url) {
   });
 }
 
+let currentPreviewUrl = null;
+
 function customBackgroundInit() {
   const maxAttempts = 30;
   let attempts = 0;
@@ -290,7 +292,11 @@ function customBackgroundInit() {
       if (!resolvedBg && idbFlag === '1') {
         try {
           const blob = await getImageFromDB();
-          if (blob) resolvedBg = URL.createObjectURL(blob);
+          if (blob) {
+            if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); }
+            resolvedBg = URL.createObjectURL(blob);
+            currentPreviewUrl = resolvedBg;
+          }
         } catch (e) {
           console.error('[CustomNight] Failed to load GIF for preview:', e);
         }
@@ -448,7 +454,9 @@ function customBackgroundInit() {
             try {
               Spicetify?.showNotification?.('Saving GIF locally, please wait...', false);
               await saveImageToDB(file);
+              if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); }
               const blobUrl = URL.createObjectURL(file);
+              currentPreviewUrl = blobUrl;
               handleUploadedImage(blobUrl);
             } catch (err) {
               Spicetify?.showNotification?.('Could not save GIF: ' + err.message, true);
@@ -535,6 +543,7 @@ function customBackgroundInit() {
           clearBackgroundSettings();
           clearAccentColors();
           await removeImageFromDB().catch(() => {});
+          if (currentPreviewUrl) { URL.revokeObjectURL(currentPreviewUrl); currentPreviewUrl = null; }
           const container = document.querySelector('.customnight-bg-container');
           if (container) {
             container.style.backgroundImage = '';
@@ -680,32 +689,34 @@ waitForElement(['.Root__top-container'], ([topContainer]) => {
     backgroundContainer.style.backgroundColor = '#000';
   }
 
-  if (customBgUrl) {
-    applyBgToContainer(customBgUrl);
-  } else if (idbFlag === '1') {
-    getImageFromDB().then(blob => {
-      if (!blob) return;
-      applyBgToContainer(URL.createObjectURL(blob));
-    }).catch(err => {
-      console.error('[CustomNight] Failed to load background from IndexedDB:', err);
-    });
-  } else {
+  function renderDefaultBackground() {
     const moonImg = document.createElement('img');
     moonImg.src = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/1231630/moon2.png';
     moonImg.alt = 'Moon';
     backgroundContainer.appendChild(moonImg);
-
     const stars = document.createElement('div');
     stars.className = 'stars';
     backgroundContainer.appendChild(stars);
-
     const twinkling = document.createElement('div');
     twinkling.className = 'twinkling';
     backgroundContainer.appendChild(twinkling);
-
     const clouds = document.createElement('div');
     clouds.className = 'clouds';
     backgroundContainer.appendChild(clouds);
+  }
+
+  if (customBgUrl) {
+    applyBgToContainer(customBgUrl);
+  } else if (idbFlag === '1') {
+    getImageFromDB().then(blob => {
+      if (!blob) { renderDefaultBackground(); return; }
+      applyBgToContainer(URL.createObjectURL(blob));
+    }).catch(err => {
+      console.error('[CustomNight] Failed to load background from IndexedDB:', err);
+      renderDefaultBackground();
+    });
+  } else {
+    renderDefaultBackground();
   }
 
   const savedAccent = getAccentColors();
