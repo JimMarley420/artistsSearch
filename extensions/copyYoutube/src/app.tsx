@@ -59,6 +59,12 @@ async function getTrackInfo(uri: string): Promise<TrackInfo | null> {
   return null;
 }
 
+async function copyAndNotify(videoId: string) {
+  const youtubeUrl = `https://youtu.be/${videoId}`;
+  const copied = await copyToClipboard(youtubeUrl);
+  Spicetify.showNotification(copied ? "YouTube link copied" : "Failed to copy to clipboard", !copied);
+}
+
 async function handleCopyYouTubeLink(uris: string[]) {
   if (!uris || uris.length === 0) {
     Spicetify.showNotification("Could not identify track", true);
@@ -85,9 +91,7 @@ async function handleCopyYouTubeLink(uris: string[]) {
 
   const cached = getCachedVideoId(cacheKey);
   if (cached) {
-    const youtubeUrl = `https://youtu.be/${cached}`;
-    const copied = await copyToClipboard(youtubeUrl);
-    Spicetify.showNotification(copied ? "YouTube link copied" : "Failed to copy to clipboard", !copied);
+    await copyAndNotify(cached);
     return;
   }
 
@@ -100,10 +104,7 @@ async function handleCopyYouTubeLink(uris: string[]) {
     }
 
     setCachedVideoId(cacheKey, result.videoId);
-
-    const youtubeUrl = `https://youtu.be/${result.videoId}`;
-    const copied = await copyToClipboard(youtubeUrl);
-    Spicetify.showNotification(copied ? "YouTube link copied" : "Failed to copy to clipboard", !copied);
+    await copyAndNotify(result.videoId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
 

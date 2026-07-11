@@ -12,7 +12,7 @@ Right-click any track in Spotify, copy its YouTube link directly to your clipboa
 - **Smart search** - Automatically cleans track titles (removes "Remastered", "Live", etc.) for better YouTube results
 - **Official videos** - Optional preference for official music videos
 - **5-minute cache** - Repeated searches for the same track don't hit the YouTube API
-- **Secure storage** - API key stored locally via Spicetify LocalStorage
+- **Local storage** - API key stored via Spicetify LocalStorage. Restrict your key to the YouTube Data API in Google Cloud Console.
 
 ## Setup
 

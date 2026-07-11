@@ -26,7 +26,12 @@ export async function searchYouTube(query: string, apiKey: string): Promise<YouT
         throw new Error("INVALID_KEY");
       }
     } catch (e) {
-      if (e instanceof Error && e.message !== "ACCESS_DENIED") throw e;
+      if (
+        e instanceof Error &&
+        (e.message === "QUOTA_EXCEEDED" || e.message === "INVALID_KEY")
+      ) {
+        throw e;
+      }
     }
     throw new Error("ACCESS_DENIED");
   }

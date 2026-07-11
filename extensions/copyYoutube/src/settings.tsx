@@ -27,7 +27,7 @@ export function SettingsForm({ onClose }: SettingsFormProps) {
           id="youtube-api-key"
           onChange={(e) => setApiKeyState((e.target as HTMLInputElement).value)}
           placeholder="Enter your YouTube Data API v3 key"
-          type="text"
+          type="password"
           value={apiKey}
         />
       </div>
