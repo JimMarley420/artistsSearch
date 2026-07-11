@@ -61,5 +61,20 @@
       }
     ],
     "tags": ["context-menu", "playlist", "bulk-delete", "utility"]
+  },
+  {
+    "name": "Copy YouTube Link",
+    "description": "Copy the YouTube link of any track directly from Spotify's context menu",
+    "preview": "extensions/copyYoutube/assets/preview.png",
+    "main": "dist/copyYoutube.mjs",
+    "readme": "extensions/copyYoutube/README.md",
+    "branch": "master",
+    "authors": [
+      {
+        "name": "JimMarley420",
+        "url": "https://github.com/JimMarley420/spicetify-extension"
+      }
+    ],
+    "tags": ["context-menu", "youtube", "link", "copy", "utility"]
   }
 ]

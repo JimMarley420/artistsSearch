@@ -1,0 +1,87 @@
+.copy-youtube-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.copy-youtube-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.copy-youtube-settings-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--spice-text);
+}
+
+.copy-youtube-settings-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--spice-text);
+  background-color: var(--spice-card);
+  border: 1px solid var(--spice-selected-row);
+  border-radius: 4px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.copy-youtube-settings-input:focus {
+  border-color: var(--spice-button-active);
+}
+
+.copy-youtube-settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--spice-text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.copy-youtube-settings-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--spice-button-active);
+  cursor: pointer;
+}
+
+.copy-youtube-settings-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.copy-youtube-settings-btn {
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s;
+}
+
+.copy-youtube-settings-btn:hover {
+  transform: scale(1.04);
+}
+
+.copy-youtube-settings-btn:active {
+  transform: scale(0.96);
+}
+
+.copy-youtube-settings-btn.cancel {
+  color: var(--spice-text);
+  background-color: var(--spice-selected-row);
+}
+
+.copy-youtube-settings-btn.save {
+  color: var(--spice-text);
+  background-color: var(--spice-button-active);
+}
