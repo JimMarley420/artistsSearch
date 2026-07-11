@@ -4,6 +4,8 @@ Right-click any track in Spotify, copy its YouTube link directly to your clipboa
 
 **Available on Spicetify Marketplace:** [spicetify-extension](https://github.com/JimMarley420/spicetify-extension)
 
+![Preview](assets/preview.png)
+
 ## Features
 
 - **One-click copy** - Right-click any track and instantly get the YouTube link
