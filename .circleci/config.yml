@@ -145,9 +145,8 @@ jobs:
             if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
               echo "Label added successfully"
             else
-              echo "Failed to add label"
+              echo "Warning: failed to add label (HTTP $RESPONSE) — continuing"
               cat response.json
-              exit 1
             fi
 
       # 📦 Artifact
