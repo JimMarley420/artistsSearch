@@ -683,8 +683,13 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
 
     if (!scrollListenerAdded) {
       scrollListenerAdded = true;
+      let pendingRender: number | null = null;
       trackList.addEventListener("scroll", () => {
-        renderTracks(renderedTracksRef);
+        if (pendingRender) return;
+        pendingRender = requestAnimationFrame(() => {
+          pendingRender = null;
+          renderTracks(renderedTracksRef);
+        });
       });
     }
 
@@ -879,8 +884,9 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   /**
    * Shared handler: select a playlist by URI, load its tracks, and pre-select
    * any tracks that match trackUris (the ones the user right-clicked on).
+   * @param preloadedTracks - optional tracks already fetched (avoids double-fetch when scanning)
    */
-  async function selectPlaylist(uri: string) {
+  async function selectPlaylist(uri: string, preloadedTracks?: Track[]) {
     if (!uri) return;
 
     const requestId = ++pendingRequest;
@@ -899,10 +905,15 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
     trackList.appendChild(loaderEl);
 
     try {
-      currentTracks = await getPlaylistTracks(uri, (tracks, totalLoaded) => {
-        if (pendingRequest !== requestId) return;
-        loaderText.textContent = `Loaded ${totalLoaded} track(s)...`;
-      });
+      if (preloadedTracks) {
+        // Scan already fetched these — skip re-fetching
+        currentTracks = preloadedTracks;
+      } else {
+        currentTracks = await getPlaylistTracks(uri, (tracks, totalLoaded) => {
+          if (pendingRequest !== requestId) return;
+          loaderText.textContent = `Loaded ${totalLoaded} track(s)...`;
+        });
+      }
 
       // This request is stale — a newer selection has replaced it
       if (pendingRequest !== requestId) return;
@@ -982,6 +993,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
 
       // Priority 2: scan playlists to find the one containing the MOST
       // selected tracks.  Only scan enough tracks to make a decision.
+      const scanId = ++pendingRequest;
       const loaderText = loaderEl.querySelector(".bulk-delete-loader-text")!;
       loaderText.textContent = "Scanning playlists...";
       trackList.innerHTML = "";
@@ -989,11 +1001,26 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
 
       let bestPlaylist: Playlist | null = null;
       let bestScore = 0;
+      let bestTracks: Track[] | null = null;
       const scanLimit = Math.max(50, trackUris.length * 3);
+      const CONCURRENCY = 5;
+      const targetScore = trackUris.length;
 
-      for (const playlist of allPlaylists) {
-        try {
-          const tracks = await getPlaylistTracks(playlist.uri, undefined, scanLimit);
+      for (let i = 0; i < allPlaylists.length; i += CONCURRENCY) {
+        if (pendingRequest !== scanId) return; // modal closed or user switched
+
+        const batch = allPlaylists.slice(i, i + CONCURRENCY);
+        const results = await Promise.allSettled(
+          batch.map(pl =>
+            getPlaylistTracks(pl.uri, undefined, scanLimit).then(tr => ({ pl, tr }))
+          )
+        );
+
+        if (pendingRequest !== scanId) return;
+
+        for (const result of results) {
+          if (result.status !== "fulfilled") continue;
+          const { pl, tr: tracks } = result.value;
           const trackUrisSet = new Set(tracks.map(t => t.uri));
           let score = 0;
           for (const uri of trackUris) {
@@ -1001,16 +1028,19 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
           }
           if (score > bestScore) {
             bestScore = score;
-            bestPlaylist = playlist;
+            bestPlaylist = pl;
+            bestTracks = tracks;
+            if (bestScore >= targetScore) break; // perfect match
           }
-        } catch (e) {
-          // Skip playlists that fail to load
         }
+        if (bestScore >= targetScore) break; // perfect match, stop scanning
       }
 
+      if (pendingRequest !== scanId) return;
+
       if (bestPlaylist && bestScore > 0) {
-        playlistSelect.value = bestPlaylist.uri;
-        playlistSelect.dispatchEvent(new Event("change"));
+        // Reuse the already-fetched tracks — no double-fetch
+        await selectPlaylist(bestPlaylist.uri, bestTracks!);
       } else {
         trackList.innerHTML = "";
         emptyState.style.display = "";
