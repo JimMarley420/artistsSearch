@@ -134,6 +134,11 @@ jobs:
               exit 0
             fi
 
+            if [ -z "$GITHUB_TOKEN" ]; then
+              echo "WARNING: GITHUB_TOKEN is not set, skipping label"
+              exit 0
+            fi
+
             PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | sed 's#.*/pull/##')
 
             RESPONSE=$(curl -s -w "%{http_code}" -o response.json -X POST \
@@ -145,9 +150,8 @@ jobs:
             if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
               echo "Label added successfully"
             else
-              echo "Failed to add label"
+              echo "WARNING: Failed to add label (HTTP $RESPONSE) — check GITHUB_TOKEN permissions"
               cat response.json
-              exit 1
             fi
 
       # 📦 Artifact
