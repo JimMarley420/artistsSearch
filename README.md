@@ -11,7 +11,7 @@ Collection of Spicetify extensions and themes for Spotify.
 | [CustomNight](themes/CustomNight/README.md) | Theme | Customizable night sky with user background support | [Marketplace](https://github.com/spicetify/marketplace) | ✅ Active |
 | [Artist Search](extensions/artistSearch/README.md) | Extension | Browse an artist's entire discography from context menu | [Marketplace](https://github.com/spicetify/marketplace) | ✅ Active |
 | [Add to Multiple Playlists](extensions/addToPlaylistMulti/README.md) | Extension | Add tracks to multiple playlists at once | [Marketplace](https://github.com/spicetify/marketplace) | ✅ Active |
-| [Bulk Delete Playlist](extensions/bulkDeletePlaylist/README.md) | Extension | Delete multiple tracks from a playlist at once | [Marketplace](https://github.com/spicetify/marketplace) | ✅ Active |
+| [Bulk Delete Tracks from Playlist](extensions/bulkDeleteTracks/README.md) | Extension | Delete multiple tracks from a playlist at once | [Marketplace](https://github.com/spicetify/marketplace) | ✅ Active |
 | [Copy YouTube Link](extensions/copyYoutube/README.md) | Extension | Copy the YouTube link of any track from the context menu | [Marketplace](https://github.com/spicetify/marketplace) | ✅ Active |
 
 ---

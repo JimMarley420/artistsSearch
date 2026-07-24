@@ -1,4 +1,4 @@
-# Bulk Delete from Playlist
+# Bulk Delete Tracks from Playlist
 
 Delete multiple tracks from a playlist at once via right-click context menu.
 
@@ -14,6 +14,7 @@ Delete multiple tracks from a playlist at once via right-click context menu.
 - **Search/Filter**: Filter tracks within the selected playlist by name, artist, or album
 - **Multi-Select**: Checkbox system to select multiple tracks
 - **Select All**: Quick select/deselect all visible tracks
+- **Sortable Columns**: Click column headers to sort by name, artist, album, who added the track, or when it was added
 - **Confirmation Modal**: Warns before permanent deletion with track count
 
 ## Usage
@@ -31,20 +32,20 @@ Delete multiple tracks from a playlist at once via right-click context menu.
 
 ## Installation
 
-Copy `dist/bulkDeletePlaylist.mjs` to your Spicetify extensions folder:
+Copy `dist/bulkDeleteTracks.mjs` to your Spicetify extensions folder:
 
 ```bash
 # Windows
-copy dist\bulkDeletePlaylist.mjs %APPDATA%\spicetify\Extensions\
+copy dist\bulkDeleteTracks.mjs %APPDATA%\spicetify\Extensions\
 
 # macOS / Linux
-cp dist/bulkDeletePlaylist.mjs ~/.config/spicetify/Extensions/
+cp dist/bulkDeleteTracks.mjs ~/.config/spicetify/Extensions/
 ```
 
 Then enable:
 
 ```bash
-spicetify config extensions bulkDeletePlaylist.mjs
+spicetify config extensions bulkDeleteTracks.mjs
 spicetify apply
 ```
 
