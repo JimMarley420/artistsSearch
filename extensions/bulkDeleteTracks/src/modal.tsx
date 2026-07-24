@@ -954,33 +954,49 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
         playlistSelect.appendChild(option);
       }
 
-      // Auto-select: if contextUri points to a playlist we have access to,
-      // select it in the dropdown and dispatch a real 'change' event.
-      // This re-uses the exact same path as manual selection, which is
-      // known to work correctly.
+      if (trackUris.length === 0 || allPlaylists.length === 0) return;
+
+      // Priority 1: if contextUri matches a known playlist, trust it and
+      // select it immediately (the user right-clicked from that playlist).
       if (currentPlaylistUri && allPlaylists.some(p => p.uri === currentPlaylistUri)) {
         playlistSelect.value = currentPlaylistUri;
         playlistSelect.dispatchEvent(new Event("change"));
         return;
       }
 
-      // Fallback: try to find which of the user's playlists contains the
-      // right-clicked tracks.  Scan playlists until we find a match.
-      if (trackUris.length > 0 && allPlaylists.length > 0) {
-        for (const playlist of allPlaylists) {
-          if (playlist.uri === currentPlaylistUri) continue;
-          try {
-            // Fetch just enough to check if any selected track is present
-            const tracks = await getPlaylistTracks(playlist.uri, undefined, trackUris.length * 2);
-            const trackUrisSet = new Set(tracks.map(t => t.uri));
-            if (trackUris.some(uri => trackUrisSet.has(uri))) {
-              await selectPlaylist(playlist.uri);
-              return;
-            }
-          } catch (e) {
-            // Silently skip playlists that fail to load
+      // Priority 2: scan playlists to find the one containing the MOST
+      // selected tracks.  Only scan enough tracks to make a decision.
+      emptyState.textContent = "Scanning playlists...";
+      trackList.innerHTML = "";
+      trackList.appendChild(emptyState);
+
+      let bestPlaylist: Playlist | null = null;
+      let bestScore = 0;
+      const scanLimit = Math.max(50, trackUris.length * 3);
+
+      for (const playlist of allPlaylists) {
+        try {
+          const tracks = await getPlaylistTracks(playlist.uri, undefined, scanLimit);
+          const trackUrisSet = new Set(tracks.map(t => t.uri));
+          let score = 0;
+          for (const uri of trackUris) {
+            if (trackUrisSet.has(uri)) score++;
           }
+          if (score > bestScore) {
+            bestScore = score;
+            bestPlaylist = playlist;
+          }
+        } catch (e) {
+          // Skip playlists that fail to load
         }
+      }
+
+      if (bestPlaylist && bestScore > 0) {
+        playlistSelect.value = bestPlaylist.uri;
+        playlistSelect.dispatchEvent(new Event("change"));
+      } else {
+        emptyState.textContent = "Select a playlist first";
+        trackList.appendChild(emptyState);
       }
     } catch (e) {
       Spicetify.showNotification("Failed to load playlists", true);
@@ -1066,8 +1082,8 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   document.body.appendChild(modal);
 
   // --- INIT after DOM is ready ---
-  loadPlaylists();
-
+  // Attach ALL event listeners BEFORE loadPlaylists() to ensure they're
+  // in place even if the API calls complete synchronously (e.g. local cache).
   playlistSelect.addEventListener("change", async () => {
     const selectedUri = playlistSelect.value;
     if (selectedUri) {
@@ -1086,6 +1102,8 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       filterTracks();
     }, 150);
   });
+
+  loadPlaylists();
 
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
