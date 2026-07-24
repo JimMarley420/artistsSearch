@@ -643,6 +643,14 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   const trackList = document.createElement("div");
   trackList.className = "bulk-delete-list";
 
+  // Loader element with animated spinner
+  const loaderEl = document.createElement("div");
+  loaderEl.className = "bulk-delete-loader";
+  loaderEl.innerHTML = `
+    <div class="bulk-delete-spinner"></div>
+    <span class="bulk-delete-loader-text">Loading tracks...</span>
+  `;
+
   const emptyState = document.createElement("div");
   emptyState.className = "bulk-delete-empty";
   emptyState.textContent = "Select a playlist first";
@@ -879,15 +887,16 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
     sortDirection = "asc";
     updateSortIndicators();
 
-    // Show loading state
-    emptyState.textContent = "Loading tracks...";
+    // Show animated loader
+    const loaderText = loaderEl.querySelector(".bulk-delete-loader-text")!;
+    loaderText.textContent = "Loading tracks...";
     trackList.innerHTML = "";
-    trackList.appendChild(emptyState);
+    trackList.appendChild(loaderEl);
 
     try {
       currentTracks = await getPlaylistTracks(uri, (tracks, totalLoaded) => {
-        if (pendingRequest !== requestId) return; // a newer request superseded this one
-        emptyState.textContent = `Loaded ${totalLoaded} track(s)...`;
+        if (pendingRequest !== requestId) return;
+        loaderText.textContent = `Loaded ${totalLoaded} track(s)...`;
       });
 
       // This request is stale — a newer selection has replaced it
@@ -919,6 +928,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       }
     } catch (e) {
       if (pendingRequest !== requestId) return;
+      trackList.innerHTML = "";
       emptyState.textContent = "Failed to load tracks";
       trackList.appendChild(emptyState);
       Spicetify.showNotification("Failed to load tracks", true);
@@ -937,6 +947,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
     sortDirection = "asc";
     updateSortIndicators();
     trackList.innerHTML = "";
+    emptyState.style.display = "";
     emptyState.textContent = "Select a playlist first";
     trackList.appendChild(emptyState);
     updateButtonState();
@@ -966,9 +977,10 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
 
       // Priority 2: scan playlists to find the one containing the MOST
       // selected tracks.  Only scan enough tracks to make a decision.
-      emptyState.textContent = "Scanning playlists...";
+      const loaderText = loaderEl.querySelector(".bulk-delete-loader-text")!;
+      loaderText.textContent = "Scanning playlists...";
       trackList.innerHTML = "";
-      trackList.appendChild(emptyState);
+      trackList.appendChild(loaderEl);
 
       let bestPlaylist: Playlist | null = null;
       let bestScore = 0;
@@ -995,6 +1007,8 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
         playlistSelect.value = bestPlaylist.uri;
         playlistSelect.dispatchEvent(new Event("change"));
       } else {
+        trackList.innerHTML = "";
+        emptyState.style.display = "";
         emptyState.textContent = "Select a playlist first";
         trackList.appendChild(emptyState);
       }
