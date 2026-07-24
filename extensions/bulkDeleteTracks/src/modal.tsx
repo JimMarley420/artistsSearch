@@ -745,14 +745,11 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
 
       const image = createTrackImage(track.imageUrl);
 
-      const info = document.createElement("div");
-      info.className = "bulk-delete-item-info";
-
-      const title = document.createElement("a");
-      title.className = "bulk-delete-item-title";
-      title.href = track.albumUri;
-      title.textContent = track.name;
-      title.addEventListener("click", (e) => {
+      const titleEl = document.createElement("a");
+      titleEl.className = "bulk-delete-item-title";
+      titleEl.href = track.albumUri;
+      titleEl.textContent = track.name;
+      titleEl.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (track.albumUri.startsWith("spotify:album:")) {
@@ -761,17 +758,13 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
         }
       });
 
-      const artist = document.createElement("span");
-      artist.className = "bulk-delete-item-artist";
-      artist.textContent = track.artist;
+      const artistEl = document.createElement("span");
+      artistEl.className = "bulk-delete-item-artist";
+      artistEl.textContent = track.artist;
 
-      const album = document.createElement("span");
-      album.className = "bulk-delete-item-album";
-      album.textContent = track.album;
-
-      info.appendChild(title);
-      info.appendChild(artist);
-      info.appendChild(album);
+      const albumEl = document.createElement("span");
+      albumEl.className = "bulk-delete-item-album";
+      albumEl.textContent = track.album;
 
       // Added by column (name + optional avatar)
       const addedByEl = document.createElement("div");
@@ -831,7 +824,9 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       item.appendChild(trackNumber);
       item.appendChild(checkboxWrapper);
       item.appendChild(image);
-      item.appendChild(info);
+      item.appendChild(titleEl);
+      item.appendChild(artistEl);
+      item.appendChild(albumEl);
       item.appendChild(addedByEl);
       item.appendChild(addedAtEl);
       item.appendChild(playback);

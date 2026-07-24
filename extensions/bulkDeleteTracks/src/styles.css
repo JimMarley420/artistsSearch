@@ -390,16 +390,9 @@
   object-fit: cover;
 }
 
-.bulk-delete-item-info {
+.bulk-delete-item-title {
   flex: 3;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  overflow: hidden;
-}
-
-.bulk-delete-item-title {
   color: #fff;
   font-size: 13px;
   font-weight: 500;
@@ -408,8 +401,8 @@
   text-overflow: ellipsis;
   cursor: pointer;
   text-decoration: none;
-  display: block;
   line-height: 1.3;
+  padding-right: 8px;
 }
 
 .bulk-delete-item-title:hover {
@@ -417,19 +410,25 @@
 }
 
 .bulk-delete-item-artist {
+  flex: 2;
+  min-width: 0;
   color: #b3b3b3;
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 8px;
 }
 
 .bulk-delete-item-album {
+  flex: 2;
+  min-width: 0;
   color: #727272;
   font-size: 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 8px;
 }
 
 /* Added By column */
