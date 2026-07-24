@@ -15,6 +15,7 @@ interface Track {
   duration: number;
   uid: string;
   addedBy: string;
+  addedByImageUrl: string;
   addedAt: string;
 }
 
@@ -216,7 +217,8 @@ export async function getPlaylistTracks(
       }
 
       for (const item of response.items) {
-        if (item?.uri) {
+        if (!item?.uri) continue;
+        try {
           let name = "Unknown Track";
           let artist = "Unknown Artist";
           let album = "Unknown Album";
@@ -247,6 +249,7 @@ export async function getPlaylistTracks(
           duration = durationVal;
 
           // Extract addedBy (who added the track)
+          let addedByImageUrl = "";
           const addedByField = itemAny.addedBy || itemAny.added_by;
           if (addedByField) {
             if (typeof addedByField === "string") {
@@ -254,6 +257,7 @@ export async function getPlaylistTracks(
             } else if (typeof addedByField === "object") {
               const ab = addedByField as Record<string, unknown>;
               addedBy = (ab.name || ab.displayName || ab.display_name || ab.id || "") as string;
+              addedByImageUrl = (ab.imageUrl || ab.avatar || (ab.image as Record<string, unknown>)?.url || ab.picture || "") as string;
             }
           }
 
@@ -278,8 +282,11 @@ export async function getPlaylistTracks(
             duration,
             uid,
             addedBy,
+            addedByImageUrl,
             addedAt,
           });
+        } catch (e) {
+          console.warn("Skipping bad track item:", e);
         }
       }
 
@@ -449,6 +456,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
 
   let sortColumn: SortColumn = "";
   let sortDirection: SortDirection = "asc";
+  let pendingRequest = 0;
 
   const getSelectionKey = (track: Track) => track.uid || track.uri;
 
@@ -765,23 +773,32 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       info.appendChild(artist);
       info.appendChild(album);
 
-      // Added by / Added at display
-      const metaInfo = document.createElement("div");
-      metaInfo.className = "bulk-delete-item-meta";
-
-      const addedByEl = document.createElement("span");
+      // Added by column (name + optional avatar)
+      const addedByEl = document.createElement("div");
       addedByEl.className = "bulk-delete-item-addedby";
-      addedByEl.textContent = track.addedBy || "";
       addedByEl.title = track.addedBy ? `Added by: ${track.addedBy}` : "";
 
+      if (track.addedByImageUrl) {
+        const avatar = document.createElement("img");
+        avatar.className = "bulk-delete-addedby-avatar";
+        avatar.src = track.addedByImageUrl;
+        avatar.alt = "";
+        avatar.loading = "lazy";
+        avatar.onerror = () => { avatar.style.display = "none"; };
+        addedByEl.appendChild(avatar);
+      }
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "bulk-delete-addedby-name";
+      nameSpan.textContent = track.addedBy || "";
+      addedByEl.appendChild(nameSpan);
+
+      // Added at column (date only)
       const addedAtEl = document.createElement("span");
       addedAtEl.className = "bulk-delete-item-addedat";
       const formattedDate = formatDate(track.addedAt);
       addedAtEl.textContent = formattedDate;
       addedAtEl.title = track.addedAt ? `Added: ${track.addedAt}` : "";
-
-      metaInfo.appendChild(addedByEl);
-      metaInfo.appendChild(addedAtEl);
 
       const playback = createPlaybackControl(track.uri, track.duration);
 
@@ -815,7 +832,8 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       item.appendChild(checkboxWrapper);
       item.appendChild(image);
       item.appendChild(info);
-      item.appendChild(metaInfo);
+      item.appendChild(addedByEl);
+      item.appendChild(addedAtEl);
       item.appendChild(playback);
       windowEl.appendChild(item);
     }
@@ -857,6 +875,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   async function selectPlaylist(uri: string) {
     if (!uri) return;
 
+    const requestId = ++pendingRequest;
     currentPlaylistUri = uri;
     playlistSelect.value = uri;
 
@@ -872,12 +891,12 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
 
     try {
       currentTracks = await getPlaylistTracks(uri, (tracks, totalLoaded) => {
-        if (currentPlaylistUri !== uri) return; // selection changed mid-load
+        if (pendingRequest !== requestId) return; // a newer request superseded this one
         emptyState.textContent = `Loaded ${totalLoaded} track(s)...`;
       });
 
-      // Bail if the user switched to another playlist while loading
-      if (currentPlaylistUri !== uri) return;
+      // This request is stale — a newer selection has replaced it
+      if (pendingRequest !== requestId) return;
 
       filteredTracks = [...currentTracks];
       selectedSet.clear();
@@ -904,7 +923,7 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
         }
       }
     } catch (e) {
-      if (currentPlaylistUri !== uri) return;
+      if (pendingRequest !== requestId) return;
       emptyState.textContent = "Failed to load tracks";
       trackList.appendChild(emptyState);
       Spicetify.showNotification("Failed to load tracks", true);
@@ -969,27 +988,6 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       Spicetify.showNotification("Failed to load playlists", true);
     }
   }
-
-  loadPlaylists();
-
-  playlistSelect.addEventListener("change", async () => {
-    const selectedUri = playlistSelect.value;
-    if (selectedUri) {
-      await selectPlaylist(selectedUri);
-    } else {
-      resetToEmpty();
-    }
-  });
-
-  let searchTimeout: number | null = null;
-  searchInput.addEventListener("input", () => {
-    if (searchTimeout) {
-      window.clearTimeout(searchTimeout);
-    }
-    searchTimeout = window.setTimeout(() => {
-      filterTracks();
-    }, 150);
-  });
 
   const buttonContainer = document.createElement("div");
   buttonContainer.className = "bulk-delete-buttons";
@@ -1068,6 +1066,28 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   modal.appendChild(content);
 
   document.body.appendChild(modal);
+
+  // --- INIT after DOM is ready ---
+  loadPlaylists();
+
+  playlistSelect.addEventListener("change", async () => {
+    const selectedUri = playlistSelect.value;
+    if (selectedUri) {
+      await selectPlaylist(selectedUri);
+    } else {
+      resetToEmpty();
+    }
+  });
+
+  let searchTimeout: number | null = null;
+  searchInput.addEventListener("input", () => {
+    if (searchTimeout) {
+      window.clearTimeout(searchTimeout);
+    }
+    searchTimeout = window.setTimeout(() => {
+      filterTracks();
+    }, 150);
+  });
 
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
