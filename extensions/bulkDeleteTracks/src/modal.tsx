@@ -960,9 +960,12 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       }
 
       // Auto-select: if contextUri points to a playlist we have access to,
-      // trust it and select it immediately — no need to pre-fetch just to verify.
+      // select it in the dropdown and dispatch a real 'change' event.
+      // This re-uses the exact same path as manual selection, which is
+      // known to work correctly.
       if (currentPlaylistUri && allPlaylists.some(p => p.uri === currentPlaylistUri)) {
-        await selectPlaylist(currentPlaylistUri);
+        playlistSelect.value = currentPlaylistUri;
+        playlistSelect.dispatchEvent(new Event("change"));
         return;
       }
 
