@@ -850,43 +850,87 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
     }
   }
 
-  async function loadPlaylistTracks(playlistUri: string) {
-    const requestToken = playlistUri;
+  /**
+   * Shared handler: select a playlist by URI, load its tracks, and pre-select
+   * any tracks that match trackUris (the ones the user right-clicked on).
+   */
+  async function selectPlaylist(uri: string) {
+    if (!uri) return;
+
+    currentPlaylistUri = uri;
+    playlistSelect.value = uri;
+
+    // Reset sort
+    sortColumn = "";
+    sortDirection = "asc";
+    updateSortIndicators();
+
+    // Show loading state
     emptyState.textContent = "Loading tracks...";
     trackList.innerHTML = "";
     trackList.appendChild(emptyState);
 
     try {
-      currentTracks = await getPlaylistTracks(playlistUri, (tracks, totalLoaded) => {
-        if (requestToken !== currentPlaylistUri) return;
+      currentTracks = await getPlaylistTracks(uri, (tracks, totalLoaded) => {
+        if (currentPlaylistUri !== uri) return; // selection changed mid-load
         emptyState.textContent = `Loaded ${totalLoaded} track(s)...`;
       });
-      if (requestToken !== currentPlaylistUri) return;
 
-      // Reset sort when loading new playlist
-      sortColumn = "";
-      sortDirection = "asc";
-      updateSortIndicators();
+      // Bail if the user switched to another playlist while loading
+      if (currentPlaylistUri !== uri) return;
 
       filteredTracks = [...currentTracks];
       selectedSet.clear();
       searchInput.disabled = false;
       searchInput.value = "";
+
+      // Pre-select the tracks the user originally right-clicked on
+      for (const trackUri of trackUris) {
+        const track = currentTracks.find(t => t.uri === trackUri);
+        if (track) {
+          selectedSet.add(getSelectionKey(track));
+        }
+      }
+
       renderTracks(filteredTracks);
       updateButtonState();
-      return;
+
+      // Scroll to the first selected track
+      if (selectedSet.size > 0) {
+        const scrollIndex = filteredTracks.findIndex(t => selectedSet.has(getSelectionKey(t)));
+        if (scrollIndex > 0) {
+          const viewportHeight = trackList.clientHeight || 400;
+          trackList.scrollTop = Math.max(0, scrollIndex * ITEM_HEIGHT - viewportHeight / 2 + ITEM_HEIGHT / 2);
+        }
+      }
     } catch (e) {
-      if (requestToken !== currentPlaylistUri) return;
+      if (currentPlaylistUri !== uri) return;
       emptyState.textContent = "Failed to load tracks";
       trackList.appendChild(emptyState);
       Spicetify.showNotification("Failed to load tracks", true);
     }
   }
 
+  /** Reset the modal to the empty (no playlist selected) state */
+  function resetToEmpty() {
+    currentPlaylistUri = null;
+    currentTracks = [];
+    filteredTracks = [];
+    selectedSet.clear();
+    searchInput.disabled = true;
+    searchInput.value = "";
+    sortColumn = "";
+    sortDirection = "asc";
+    updateSortIndicators();
+    trackList.innerHTML = "";
+    emptyState.textContent = "Select a playlist first";
+    trackList.appendChild(emptyState);
+    updateButtonState();
+  }
+
   async function loadPlaylists() {
     try {
       allPlaylists = await fetchPlaylistsWithDeletePermission();
-
       allPlaylists.sort((a, b) => a.name.localeCompare(b.name));
 
       for (const playlist of allPlaylists) {
@@ -896,58 +940,28 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
         playlistSelect.appendChild(option);
       }
 
+      // Auto-select: if contextUri points to a playlist we have access to,
+      // trust it and select it immediately — no need to pre-fetch just to verify.
+      if (currentPlaylistUri && allPlaylists.some(p => p.uri === currentPlaylistUri)) {
+        await selectPlaylist(currentPlaylistUri);
+        return;
+      }
+
+      // Fallback: try to find which of the user's playlists contains the
+      // right-clicked tracks.  Scan playlists until we find a match.
       if (trackUris.length > 0 && allPlaylists.length > 0) {
-        let foundPlaylist: Playlist | null = null;
-
-        if (currentPlaylistUri) {
-          const preferred = allPlaylists.find(p => p.uri === currentPlaylistUri);
-          if (preferred) {
-            try {
-              const tracks = await getPlaylistTracks(preferred.uri, undefined, 500);
-              const trackUrisSet = new Set(tracks.map(t => t.uri));
-              const hasSelectedTrack = trackUris.some(uri => trackUrisSet.has(uri));
-              if (hasSelectedTrack) {
-                foundPlaylist = preferred;
-              }
-            } catch (e) {}
-          }
-        }
-
-        if (!foundPlaylist) {
-          for (const playlist of allPlaylists) {
-            if (playlist.uri === currentPlaylistUri) continue;
-            try {
-              const tracks = await getPlaylistTracks(playlist.uri, undefined, 500);
-              const trackUrisSet = new Set(tracks.map(t => t.uri));
-              const hasSelectedTrack = trackUris.some(uri => trackUrisSet.has(uri));
-              if (hasSelectedTrack) {
-                foundPlaylist = playlist;
-                break;
-              }
-            } catch (e) {}
-          }
-        }
-
-        if (foundPlaylist) {
-          playlistSelect.value = foundPlaylist.uri;
-          currentPlaylistUri = foundPlaylist.uri;
-          await loadPlaylistTracks(foundPlaylist.uri);
-
-          selectedSet.clear();
-          for (const uri of trackUris) {
-            const track = currentTracks.find(t => t.uri === uri);
-            if (track) {
-              selectedSet.add(getSelectionKey(track));
+        for (const playlist of allPlaylists) {
+          if (playlist.uri === currentPlaylistUri) continue;
+          try {
+            // Fetch just enough to check if any selected track is present
+            const tracks = await getPlaylistTracks(playlist.uri, undefined, trackUris.length * 2);
+            const trackUrisSet = new Set(tracks.map(t => t.uri));
+            if (trackUris.some(uri => trackUrisSet.has(uri))) {
+              await selectPlaylist(playlist.uri);
+              return;
             }
-          }
-
-          renderTracks(filteredTracks);
-          updateButtonState();
-
-          const scrollIndex = filteredTracks.findIndex(t => selectedSet.has(getSelectionKey(t)));
-          if (scrollIndex > 0) {
-            const viewportHeight = trackList.clientHeight || 400;
-            trackList.scrollTop = Math.max(0, scrollIndex * ITEM_HEIGHT - viewportHeight / 2 + ITEM_HEIGHT / 2);
+          } catch (e) {
+            // Silently skip playlists that fail to load
           }
         }
       }
@@ -961,24 +975,9 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
   playlistSelect.addEventListener("change", async () => {
     const selectedUri = playlistSelect.value;
     if (selectedUri) {
-      currentPlaylistUri = selectedUri;
-      await loadPlaylistTracks(selectedUri);
+      await selectPlaylist(selectedUri);
     } else {
-      currentPlaylistUri = null;
-      currentTracks = [];
-      filteredTracks = [];
-      selectedSet.clear();
-      searchInput.disabled = true;
-      searchInput.value = "";
-      sortColumn = "";
-      sortDirection = "asc";
-      updateSortIndicators();
-      trackList.innerHTML = "";
-      const empty = document.createElement("div");
-      empty.className = "bulk-delete-empty";
-      empty.textContent = "Select a playlist first";
-      trackList.appendChild(empty);
-      updateButtonState();
+      resetToEmpty();
     }
   });
 
