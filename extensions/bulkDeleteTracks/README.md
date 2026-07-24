@@ -2,8 +2,7 @@
 
 Delete multiple tracks from a playlist at once via right-click context menu.
 
-<img width="1168" height="663" alt="image" src="https://github.com/user-attachments/assets/5af7018f-3479-4d5a-87c1-925b27982728" />
-<img width="228" height="473" alt="image" src="https://github.com/user-attachments/assets/263f875e-b499-4bee-97b9-cf540109478b" />
+<img width="800" alt="Bulk Delete Tracks from Playlist - Spicetify Extension" src="https://github.com/JimMarley420/spicetify-extension/blob/feat/sort-by-added/extensions/bulkDeleteTracks/assets/preview.png?raw=true" />
 
 
 ## Features

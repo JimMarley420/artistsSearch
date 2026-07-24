@@ -673,6 +673,11 @@ export function createModal(trackUris: string[], preferredPlaylistUri?: string |
       return;
     }
 
+    // Remove loader when tracks are ready
+    if (loaderEl.parentNode === trackList) {
+      trackList.removeChild(loaderEl);
+    }
+
     emptyState.style.display = "none";
     trackList.style.position = "relative";
 

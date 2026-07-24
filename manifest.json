@@ -50,7 +50,7 @@
   {
     "name": "Bulk Delete Tracks from Playlist",
     "description": "Delete multiple tracks from a playlist at once — select tracks, filter by name/artist/album, and bulk remove them.",
-    "preview": "extensions/bulkDeleteTracks/assets/preview.png",
+    "preview": "https://github.com/JimMarley420/spicetify-extension/blob/feat/sort-by-added/extensions/bulkDeleteTracks/assets/preview.png?raw=true",
     "main": "dist/bulkDeleteTracks.mjs",
     "readme": "extensions/bulkDeleteTracks/README.md",
     "branch": "master",
