@@ -1,38 +1,46 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
+name: Bug Report
+about: Report a bug in an extension or theme
+title: "[Bug]: "
+labels: bug
 assignees: ''
-
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Extension / Theme
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+<!-- Which extension or theme is affected? -->
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+- [ ] CustomNight (Theme)
+- [ ] Artist Search
+- [ ] Add to Multiple Playlists
+- [ ] Bulk Delete Tracks
+- [ ] Copy YouTube Link
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## Describe the Bug
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+<!-- A clear and concise description of what the bug is. -->
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+## Steps to Reproduce
 
-**Additional context**
-Add any other context about the problem here.
+1. 
+2. 
+3. 
+
+## Expected Behavior
+
+<!-- What you expected to happen. -->
+
+## Screenshots
+
+<!-- If applicable, add screenshots to help explain the problem. -->
+
+## Environment
+
+- **OS**: <!-- e.g. Windows 11, macOS 14, Ubuntu 24.04 -->
+- **Spicetify Version**: <!-- e.g. 2.38.0 -->
+- **Spotify Version**: <!-- e.g. 1.2.40.431 -->
+- **Extension/Theme Version**: <!-- e.g. latest, or specific version -->
+
+## Additional Context
+
+<!-- Any other context about the problem. Console logs, error messages, etc. -->
