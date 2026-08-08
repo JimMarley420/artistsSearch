@@ -1,20 +1,34 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
+name: Feature Request
+about: Suggest an idea for an extension or theme
+title: "[Feature]: "
+labels: enhancement
 assignees: ''
-
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## Extension / Theme
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+<!-- Which extension or theme is this about? -->
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+- [ ] CustomNight (Theme)
+- [ ] Artist Search
+- [ ] Add to Multiple Playlists
+- [ ] Bulk Delete Tracks
+- [ ] Copy YouTube Link
+- [ ] Other / Multiple
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+## Problem
+
+<!-- What problem does this feature solve? "I'm always frustrated when..." -->
+
+## Proposed Solution
+
+<!-- A clear and concise description of what you want to happen. -->
+
+## Alternatives Considered
+
+<!-- Any alternative solutions or features you've considered. -->
+
+## Additional Context
+
+<!-- Mockups, screenshots, or any other context. -->

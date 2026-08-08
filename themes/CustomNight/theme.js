@@ -554,7 +554,7 @@ function customBackgroundInit() {
             if (!container.querySelector('img[alt="Moon"]')) {
               container.innerHTML = '';
               const moonImg = document.createElement('img');
-              moonImg.src = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/1231630/moon2.png';
+              moonImg.src = 'https://raw.githubusercontent.com/JimMarley420/spicetify-extension/master/themes/CustomNight/assets/moon2.png';
               moonImg.alt = 'Moon';
               container.appendChild(moonImg);
               const stars = document.createElement('div');
@@ -691,7 +691,7 @@ waitForElement(['.Root__top-container'], ([topContainer]) => {
 
   function renderDefaultBackground() {
     const moonImg = document.createElement('img');
-    moonImg.src = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/1231630/moon2.png';
+    moonImg.src = 'https://raw.githubusercontent.com/JimMarley420/spicetify-extension/master/themes/CustomNight/assets/moon2.png';
     moonImg.alt = 'Moon';
     backgroundContainer.appendChild(moonImg);
     const stars = document.createElement('div');
