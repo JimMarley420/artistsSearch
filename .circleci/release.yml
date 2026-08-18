@@ -1,7 +1,7 @@
 version: 2.1
 
 jobs:
-  tag-merged-pr:
+  create-release:
     docker:
       - image: denoland/deno:2.7.11
     steps:
@@ -18,33 +18,101 @@ jobs:
             git config user.email "ci@circleci.com"
             git config user.name "circleci-bot"
             git remote set-url origin git@github.com:${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
+            git fetch --tags
 
       - run:
-          name: Find latest merged PR and create tag
+          name: Determine version bump (conventional commits)
           command: |
-            MERGED_PR=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/pulls?state=closed&sort=updated&direction=desc&per_page=100" | \
-              jq -r '[.[] | select(.merged_at != null)][0].number // empty')
+            # Latest semantic version tag
+            LATEST_TAG=$(git tag --list 'v[0-9]*' | sort -V | tail -1)
 
-            if [ -z "$MERGED_PR" ]; then
-              echo "No merged PR found"
+            if [ -z "$LATEST_TAG" ]; then
+              LATEST_VERSION="0.0.0"
+              COMMITS=$(git log --oneline HEAD)
+            else
+              LATEST_VERSION="${LATEST_TAG#v}"
+              COMMITS=$(git log --oneline "v$LATEST_VERSION..HEAD")
+            fi
+
+            echo "Latest version: v$LATEST_VERSION"
+
+            # Default is a patch bump; feat → minor, breaking → major
+            BUMP="patch"
+            if echo "$COMMITS" | grep -qE '!|BREAKING CHANGE'; then
+              BUMP="major"
+            elif echo "$COMMITS" | grep -qE '^\s*feat(\(|:)'; then
+              BUMP="minor"
+            fi
+
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+            case "$BUMP" in
+              major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+              minor) MINOR=$((MINOR+1)); PATCH=0 ;;
+              patch) PATCH=$((PATCH+1)) ;;
+            esac
+
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+            echo "export NEW_VERSION=$NEW_VERSION" >> $BASH_ENV
+            echo "export BUMP=$BUMP" >> $BASH_ENV
+            echo "export LATEST_TAG=v$LATEST_VERSION" >> $BASH_ENV
+            echo "Bump: $BUMP → v$NEW_VERSION"
+
+      - run:
+          name: Create git tag
+          command: |
+            if git ls-remote origin "refs/tags/v$NEW_VERSION" | grep -q .; then
+              echo "Tag v$NEW_VERSION already exists"
+              echo "export TAG_CREATED=0" >> $BASH_ENV
               exit 0
             fi
 
-            EXISTING_TAG=$(git ls-remote --tags origin "refs/tags/pr-$MERGED_PR" | cut -f1)
-            if [ -n "$EXISTING_TAG" ]; then
-              echo "Tag pr-$MERGED_PR already exists"
+            git tag "v$NEW_VERSION"
+            git push origin "v$NEW_VERSION"
+            echo "Tagged v$NEW_VERSION"
+            echo "export TAG_CREATED=1" >> $BASH_ENV
+
+      - run:
+          name: Create GitHub Release
+          command: |
+            if [ "$TAG_CREATED" != "1" ]; then
+              echo "No new tag to release"
               exit 0
             fi
 
-            echo "Creating tag for PR #$MERGED_PR"
-            git tag "pr-$MERGED_PR"
-            git push origin "pr-$MERGED_PR"
+            if [ "$LATEST_TAG" = "v0.0.0" ] || [ -z "$LATEST_TAG" ]; then
+              LOG_RANGE="HEAD"
+            else
+              LOG_RANGE="${LATEST_TAG}..HEAD"
+            fi
+
+            BODY=$(git log --oneline "$LOG_RANGE" | sed -n '1,80p' || true)
+
+            JQ_BODY=$(jq -Rn --arg content "$BODY" '$content')
+
+            RESPONSE=$(curl -s -w "%{http_code}" -o release.json -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/releases" \
+              -d "{
+                \"tag_name\": \"v$NEW_VERSION\",
+                \"name\": \"v$NEW_VERSION\",
+                \"body\": $JQ_BODY,
+                \"draft\": false,
+                \"prerelease\": false
+              }")
+
+            if [ "$RESPONSE" -ne 201 ]; then
+              echo "❌ Release creation failed (HTTP $RESPONSE)"
+              cat release.json
+              exit 1
+            fi
+
+            echo "✅ Release v$NEW_VERSION created"
 
 workflows:
   release-on-merge:
     jobs:
-      - tag-merged-pr:
+      - create-release:
           filters:
             branches:
               only:

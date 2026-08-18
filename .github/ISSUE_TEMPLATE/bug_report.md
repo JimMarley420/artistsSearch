@@ -2,19 +2,21 @@
 name: Bug Report
 about: Report a bug in an extension or theme
 title: "[Bug]: "
-labels: bug
-assignees: ''
+labels:
+  - bug
+assignees: ""
 ---
 
 ## Extension / Theme
 
 <!-- Which extension or theme is affected? -->
 
-- [ ] CustomNight (Theme)
-- [ ] Artist Search
-- [ ] Add to Multiple Playlists
-- [ ] Bulk Delete Tracks
-- [ ] Copy YouTube Link
+- [ ] `component: CustomNight` (Theme)
+- [ ] `component: Artist Search`
+- [ ] `component: Add to Multiple Playlists`
+- [ ] `component: Bulk Delete Tracks`
+- [ ] `component: Copy YouTube Link`
+- [ ] Other / Multiple
 
 ## Describe the Bug
 
@@ -29,6 +31,10 @@ assignees: ''
 ## Expected Behavior
 
 <!-- What you expected to happen. -->
+
+## Actual Behavior
+
+<!-- What actually happened. -->
 
 ## Screenshots
 

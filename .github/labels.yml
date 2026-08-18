@@ -1,0 +1,123 @@
+# Label taxonomy for the Spicetify Extension repository
+# Sync these labels with: gh label create --repo JimMarley420/spicetify-extension
+# or via the GitHub "Label sync" action using this file.
+
+# ---------------------------------------------------------------------------
+# 1. Type
+# ---------------------------------------------------------------------------
+- name: bug
+  color: d73a4a
+  description: Something isn't working as expected
+- name: enhancement
+  color: a2eeef
+  description: New feature or improvement request
+- name: documentation
+  color: 0075ca
+  description: Improvements or additions to documentation
+- name: question
+  color: d876e3
+  description: Further information or clarification is requested
+- name: discussion
+  color: fbca04
+  description: Open discussion, RFC or design proposal
+
+# ---------------------------------------------------------------------------
+# 2. Priority
+# ---------------------------------------------------------------------------
+- name: "priority: critical"
+  color: b60205
+  description: Blocks a release or breaks core functionality
+- name: "priority: high"
+  color: d93f0b
+  description: Serious bug or highly requested feature
+- name: "priority: medium"
+  color: fbca04
+  description: Standard issue, nice to have
+- name: "priority: low"
+  color: 0e8a16
+  description: Cosmetic polish or long-term idea
+
+# ---------------------------------------------------------------------------
+# 3. Status / Workflow
+# ---------------------------------------------------------------------------
+- name: "status: triaged"
+  color: c5def5
+  description: Issue has been reviewed and classified by a maintainer
+- name: "status: needs repro"
+  color: d93f0b
+  description: Cannot reproduce yet — more details required
+- name: "status: needs design"
+  color: c5def5
+  description: Needs a UI/UX review or design before implementation
+- name: "status: blocked"
+  color: b60205
+  description: Waiting on another issue, PR or external dependency
+- name: "status: in progress"
+  color: 1d76db
+  description: Someone is actively working on this
+- name: ready-for-review
+  color: 268203
+  description: PR is ready for maintainer review
+- name: "status: waiting on user"
+  color: cfd3d7
+  description: Awaiting the reporter for additional information
+
+# ---------------------------------------------------------------------------
+# 4. Component — one label per extension / theme
+# ---------------------------------------------------------------------------
+- name: "component: CustomNight"
+  color: 1d76db
+  description: Issues related to the CustomNight theme
+- name: "component: Artist Search"
+  color: 006b75
+  description: Issues related to the Search Artist Tracks extension
+- name: "component: Add to Multiple Playlists"
+  color: 5319e7
+  description: Issues related to the Add to Multiple Playlists extension
+- name: "component: Bulk Delete Tracks"
+  color: e99695
+  description: Issues related to the Bulk Delete Tracks extension
+- name: "component: Copy YouTube Link"
+  color: f9d0c4
+  description: Issues related to the Copy YouTube Link extension
+
+# ---------------------------------------------------------------------------
+# 5. Community
+# ---------------------------------------------------------------------------
+- name: "good first issue"
+  color: 7057ff
+  description: Good for newcomers to the project
+- name: "help wanted"
+  color: 008672
+  description: Extra attention and contributors needed
+- name: "hacktoberfest"
+  color: ffff00
+  description: Contributes towards Hacktoberfest
+
+# ---------------------------------------------------------------------------
+# 6. Meta / Maintenance
+# ---------------------------------------------------------------------------
+- name: dependencies
+  color: ededed
+  description: Pull requests that update a dependency file
+- name: duplicate
+  color: cfd3d7
+  description: This issue or pull request already exists
+- name: invalid
+  color: e4e669
+  description: This doesn't seem right
+- name: wontfix
+  color: ffffff
+  description: This will not be worked on
+- name: "CI/CD"
+  color: 5319e7
+  description: Changes to CircleCI, build pipeline or release automation
+- name: security
+  color: b60205
+  description: Security related bug or vulnerability
+- name: performance
+  color: 0e8a16
+  description: Performance improvement or regression
+- name: refactor
+  color: 000000
+  description: Code cleanup or restructuring without behavior change

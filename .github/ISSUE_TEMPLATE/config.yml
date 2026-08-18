@@ -3,3 +3,9 @@ contact_links:
   - name: Installation Guide
     url: https://github.com/JimMarley420/spicetify-extension#installation
     about: Read the installation instructions before opening an issue
+  - name: Spicetify Community
+    url: https://community.spicetify.app/
+    about: Ask general Spicetify questions in the official community
+  - name: Spicetify Marketplace
+    url: https://github.com/spicetify/marketplace
+    about: For issues with the Marketplace itself, not this repo
