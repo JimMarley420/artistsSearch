@@ -2,8 +2,9 @@
 name: Question / Other
 about: Ask a question or discuss something not covered by other templates
 title: ""
-labels: ''
-assignees: ''
+labels:
+  - question
+assignees: ""
 ---
 
 ## Description

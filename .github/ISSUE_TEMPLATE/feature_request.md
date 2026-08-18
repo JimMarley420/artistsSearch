@@ -2,19 +2,21 @@
 name: Feature Request
 about: Suggest an idea for an extension or theme
 title: "[Feature]: "
-labels: enhancement
-assignees: ''
+labels:
+  - enhancement
+assignees: ""
 ---
 
 ## Extension / Theme
 
 <!-- Which extension or theme is this about? -->
 
-- [ ] CustomNight (Theme)
-- [ ] Artist Search
-- [ ] Add to Multiple Playlists
-- [ ] Bulk Delete Tracks
-- [ ] Copy YouTube Link
+- [ ] `component: CustomNight` (Theme)
+- [ ] `component: Artist Search`
+- [ ] `component: Add to Multiple Playlists`
+- [ ] `component: Bulk Delete Tracks`
+- [ ] `component: Copy YouTube Link`
+- [ ] New extension / theme
 - [ ] Other / Multiple
 
 ## Problem
@@ -28,6 +30,15 @@ assignees: ''
 ## Alternatives Considered
 
 <!-- Any alternative solutions or features you've considered. -->
+
+## Priority
+
+<!-- Roughly how important is this to you? -->
+
+- [ ] `priority: critical`
+- [ ] `priority: high`
+- [ ] `priority: medium`
+- [ ] `priority: low`
 
 ## Additional Context
 

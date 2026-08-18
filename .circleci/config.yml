@@ -1,4 +1,4 @@
-version: 2.1
+﻿version: 2.1
 
 jobs:
   lint:
@@ -55,6 +55,68 @@ jobs:
           name: Check manifest references
           command: deno task manifest:check
 
+  ci-cd-check:
+    docker:
+      - image: denoland/deno:latest
+
+    steps:
+      - checkout
+
+      # Skip unless the PR carries the CI/CD label
+      - run:
+          name: Skip unless CI/CD label
+          command: |
+            apt-get update && apt-get install -y jq curl
+
+            if [ -z "$CIRCLE_PULL_REQUEST" ]; then
+              echo "Not a PR, skipping CI/CD check"
+              circleci step halt
+            fi
+
+            PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | sed 's#.*/pull/##')
+
+            LABELS=$(curl -s \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/issues/$PR_NUMBER/labels)
+
+            if ! echo "$LABELS" | jq -e 'any(.[]; .name == "CI/CD")' > /dev/null 2>&1; then
+              echo "PR #$PR_NUMBER has no CI/CD label, skipping CI/CD checks"
+              circleci step halt
+            fi
+
+            echo "CI/CD label present on PR #$PR_NUMBER, running CI/CD checks"
+
+      # Validate CircleCI configs
+      - run:
+          name: Validate CircleCI config syntax
+          command: |
+            for f in .circleci/config.yml .circleci/release.yml .circleci/deps.yml; do
+              deno run -A --quiet -e "import { parse } from 'jsr:@std/yaml'; parse(await Deno.readTextFile('$f')); console.log('OK  $f');"
+            done
+
+      # Check deno tasks used by CI exist in deno.json
+      - run:
+          name: Validate deno tasks referenced by CI
+          command: |
+            MISSING=0
+            for t in lint typecheck test theme:check theme:lint manifest:check build release; do
+              if ! deno eval "import { parse } from 'jsr:@std/yaml'; const cfg = await Deno.readTextFile('deno.json'); const j = JSON.parse(cfg); if (!j.tasks || !(j.tasks['$t'])) { Deno.exit(1) }" 2>/dev/null; then
+                echo "MISSING task: $t"
+                MISSING=1
+              fi
+            done
+            if [ "$MISSING" -ne 0 ]; then
+              echo "ERROR: CI references tasks missing from deno.json"
+              exit 1
+            fi
+            echo "All CI tasks resolved"
+
+      # Lint + typecheck the CI-relevant tooling
+      - run:
+          name: Typecheck CI tooling
+          command: deno task typecheck
+
   build:
     docker:
       - image: denoland/deno:latest
@@ -69,14 +131,14 @@ jobs:
       - image: denoland/deno:latest
 
     steps:
-      # 🔐 SSH key (CRUCIAL)
+      # SSH key (CRUCIAL)
       - add_ssh_keys:
           fingerprints:
             - "zhvhgYmcZBO8Dfn8P32ETQ+agImCNXFQCu5UfPoYtRc"
 
       - checkout
 
-      # 📦 Install tools + SSH config
+      # Install tools + SSH config
       - run:
           name: Install dependencies and configure git (SSH)
           command: |
@@ -90,7 +152,7 @@ jobs:
 
             git remote set-url origin git@github.com:${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
 
-      # ⛔ Skip if not PR
+      # Skip if not PR
       - run:
           name: Skip if not a PR
           command: |
@@ -99,14 +161,14 @@ jobs:
               circleci step halt
             fi
 
-      # 🧹 Build
+      # Build
       - run:
           name: Clean and run release
           command: |
             rm -rf dist
             deno task release
 
-      # 💾 Commit changes
+      # Commit changes
       - run:
           name: Commit dist if changed
           command: |
@@ -119,13 +181,13 @@ jobs:
 
             git commit -m "chore: update dist [ci skip]"
 
-      # 🚀 Push (SSH)
+      # Push (SSH)
       - run:
           name: Push changes
           command: |
             git push origin HEAD:${CIRCLE_BRANCH}
 
-      # 🏷 Add label to PR
+      # Add label to PR
       - run:
           name: Add ready-for-review label
           command: |
@@ -145,11 +207,11 @@ jobs:
             if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
               echo "Label added successfully"
             else
-              echo "Warning: failed to add label (HTTP $RESPONSE) — continuing"
+              echo "Warning: failed to add label (HTTP $RESPONSE) - continuing"
               cat response.json
             fi
 
-      # 📦 Artifact
+      # Artifact
       - store_artifacts:
           path: dist
           destination: dist
@@ -159,20 +221,20 @@ jobs:
       - image: denoland/deno:latest
 
     steps:
-      # 🔐 SSH
+      # SSH
       - add_ssh_keys:
           fingerprints:
             - "zhvhgYmcZBO8Dfn8P32ETQ+agImCNXFQCu5UfPoYtRc"
 
       - checkout
 
-      # 📦 tools
+      # tools
       - run:
           name: Install dependencies
           command: |
             apt-get update && apt-get install -y git curl jq
 
-      # 🔧 git SSH
+      # git SSH
       - run:
           name: Configure git (SSH)
           command: |
@@ -184,14 +246,14 @@ jobs:
 
             git remote set-url origin git@github.com:${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
 
-      # 🔍 outdated deps
+      # outdated deps
       - run:
           name: Check outdated dependencies
           command: |
             deno outdated > outdated.txt || true
             cat outdated.txt
 
-      # ⛔ stop if nothing
+      # stop if nothing
       - run:
           name: Stop if no updates
           command: |
@@ -200,7 +262,7 @@ jobs:
               circleci step halt
             fi
 
-      # 🌿 branch
+      # branch
       - run:
           name: Create update branch
           command: |
@@ -208,13 +270,13 @@ jobs:
             echo "export UPDATE_BRANCH=$BRANCH" >> $BASH_ENV
             git checkout -b $BRANCH
 
-      # 🔄 update
+      # update
       - run:
           name: Update dependencies
           command: |
             deno outdated --update
 
-      # 💾 commit
+      # commit
       - run:
           name: Commit changes
           command: |
@@ -227,13 +289,13 @@ jobs:
 
             git commit -m "chore(deps): update deno dependencies [ci skip]"
 
-      # 🚀 push
+      # push
       - run:
           name: Push branch
           command: |
             git push origin $UPDATE_BRANCH
 
-      # 🔀 PR
+      # PR
       - run:
           name: Create Pull Request
           command: |
@@ -256,14 +318,14 @@ jobs:
               exit 1
             fi
 
-      # 🧾 Issue
+      # Issue
       - run:
           name: Create Issue
           command: |
             BODY=$(cat outdated.txt)
 
             JSON=$(jq -n \
-              --arg title "🔄 Deno dependencies update available" \
+              --arg title "Deno dependencies update available" \
               --arg body "$BODY" \
               '{title: $title, body: ("```\n" + $body + "\n```")}')
 
@@ -286,6 +348,7 @@ workflows:
       - theme-check
       - theme-lint
       - manifest-check
+      - ci-cd-check
       - build:
           requires:
             - test
@@ -295,4 +358,3 @@ workflows:
       - release:
           requires:
             - build
-
