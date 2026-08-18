@@ -29,5 +29,5 @@ Please include as much of the following information as possible:
 
 | Version | Supported |
 |---------|-----------|
-| Latest release | ✅ Yes |
-| Older versions | ❌ No — please update |
+| Latest release | ✓ Yes |
+| Older versions | ✗ No — please update |

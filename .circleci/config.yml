@@ -1,4 +1,4 @@
-version: 2.1
+﻿version: 2.1
 
 jobs:
   lint:
@@ -69,14 +69,14 @@ jobs:
       - image: denoland/deno:latest
 
     steps:
-      # 🔐 SSH key (CRUCIAL)
+      # SSH key (CRUCIAL)
       - add_ssh_keys:
           fingerprints:
             - "zhvhgYmcZBO8Dfn8P32ETQ+agImCNXFQCu5UfPoYtRc"
 
       - checkout
 
-      # 📦 Install tools + SSH config
+      # Install tools + SSH config
       - run:
           name: Install dependencies and configure git (SSH)
           command: |
@@ -90,7 +90,7 @@ jobs:
 
             git remote set-url origin git@github.com:${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
 
-      # ⛔ Skip if not PR
+      # Skip if not PR
       - run:
           name: Skip if not a PR
           command: |
@@ -99,14 +99,14 @@ jobs:
               circleci step halt
             fi
 
-      # 🧹 Build
+      # Build
       - run:
           name: Clean and run release
           command: |
             rm -rf dist
             deno task release
 
-      # 💾 Commit changes
+      # Commit changes
       - run:
           name: Commit dist if changed
           command: |
@@ -119,13 +119,13 @@ jobs:
 
             git commit -m "chore: update dist [ci skip]"
 
-      # 🚀 Push (SSH)
+      # Push (SSH)
       - run:
           name: Push changes
           command: |
             git push origin HEAD:${CIRCLE_BRANCH}
 
-      # 🏷 Add label to PR
+      # Add label to PR
       - run:
           name: Add ready-for-review label
           command: |
@@ -145,11 +145,11 @@ jobs:
             if [ "$RESPONSE" -eq 200 ] || [ "$RESPONSE" -eq 201 ]; then
               echo "Label added successfully"
             else
-              echo "Warning: failed to add label (HTTP $RESPONSE) — continuing"
+              echo "Warning: failed to add label (HTTP $RESPONSE) - continuing"
               cat response.json
             fi
 
-      # 📦 Artifact
+      # Artifact
       - store_artifacts:
           path: dist
           destination: dist
@@ -159,20 +159,20 @@ jobs:
       - image: denoland/deno:latest
 
     steps:
-      # 🔐 SSH
+      # SSH
       - add_ssh_keys:
           fingerprints:
             - "zhvhgYmcZBO8Dfn8P32ETQ+agImCNXFQCu5UfPoYtRc"
 
       - checkout
 
-      # 📦 tools
+      # tools
       - run:
           name: Install dependencies
           command: |
             apt-get update && apt-get install -y git curl jq
 
-      # 🔧 git SSH
+      # git SSH
       - run:
           name: Configure git (SSH)
           command: |
@@ -184,14 +184,14 @@ jobs:
 
             git remote set-url origin git@github.com:${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}.git
 
-      # 🔍 outdated deps
+      # outdated deps
       - run:
           name: Check outdated dependencies
           command: |
             deno outdated > outdated.txt || true
             cat outdated.txt
 
-      # ⛔ stop if nothing
+      # stop if nothing
       - run:
           name: Stop if no updates
           command: |
@@ -200,7 +200,7 @@ jobs:
               circleci step halt
             fi
 
-      # 🌿 branch
+      # branch
       - run:
           name: Create update branch
           command: |
@@ -208,13 +208,13 @@ jobs:
             echo "export UPDATE_BRANCH=$BRANCH" >> $BASH_ENV
             git checkout -b $BRANCH
 
-      # 🔄 update
+      # update
       - run:
           name: Update dependencies
           command: |
             deno outdated --update
 
-      # 💾 commit
+      # commit
       - run:
           name: Commit changes
           command: |
@@ -227,13 +227,13 @@ jobs:
 
             git commit -m "chore(deps): update deno dependencies [ci skip]"
 
-      # 🚀 push
+      # push
       - run:
           name: Push branch
           command: |
             git push origin $UPDATE_BRANCH
 
-      # 🔀 PR
+      # PR
       - run:
           name: Create Pull Request
           command: |
@@ -256,14 +256,14 @@ jobs:
               exit 1
             fi
 
-      # 🧾 Issue
+      # Issue
       - run:
           name: Create Issue
           command: |
             BODY=$(cat outdated.txt)
 
             JSON=$(jq -n \
-              --arg title "🔄 Deno dependencies update available" \
+              --arg title "Deno dependencies update available" \
               --arg body "$BODY" \
               '{title: $title, body: ("```\n" + $body + "\n```")}')
 
@@ -295,4 +295,3 @@ workflows:
       - release:
           requires:
             - build
-

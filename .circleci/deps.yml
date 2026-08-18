@@ -1,4 +1,4 @@
-version: 2.1
+﻿version: 2.1
 
 jobs:
   update-deno-deps:
@@ -17,7 +17,7 @@ jobs:
           command: |
             apt-get update && apt-get install -y git curl jq
 
-      # 🔧 Configure Git (SSH)
+      # Configure Git (SSH)
       - run:
           name: Configure git
           command: |
@@ -93,12 +93,12 @@ jobs:
               }")
 
             if [ "$RESPONSE" -ge 400 ]; then
-              echo "❌ PR creation failed"
+              echo "ERROR: PR creation failed"
               cat pr_response.json
               exit 1
             fi
 
-            echo "✅ PR created"
+            echo "OK: PR created"
             cat pr_response.json
 
       - run:
@@ -107,7 +107,7 @@ jobs:
             BODY=$(cat outdated.txt)
 
             JSON=$(jq -n \
-              --arg title "🔄 Deno dependencies update available" \
+              --arg title "Deno dependencies update available" \
               --arg body "$BODY" \
               '{title: $title, body: ("```\n" + $body + "\n```")}')
 
@@ -118,12 +118,10 @@ jobs:
               -d "$JSON")
 
             if [ "$RESPONSE" -ge 400 ]; then
-              echo "❌ Issue creation failed"
+              echo "ERROR: Issue creation failed"
               cat issue_response.json
               exit 1
             fi
 
-            echo "✅ Issue created"
+            echo "OK: Issue created"
             cat issue_response.json
-
-

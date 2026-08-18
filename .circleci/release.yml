@@ -102,12 +102,12 @@ jobs:
               }")
 
             if [ "$RESPONSE" -ne 201 ]; then
-              echo "❌ Release creation failed (HTTP $RESPONSE)"
+              echo "ERROR: Release creation failed (HTTP $RESPONSE)"
               cat release.json
               exit 1
             fi
 
-            echo "✅ Release v$NEW_VERSION created"
+            echo "OK: Release v$NEW_VERSION created"
 
 workflows:
   release-on-merge:
