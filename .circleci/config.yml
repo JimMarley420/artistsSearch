@@ -55,6 +55,68 @@ jobs:
           name: Check manifest references
           command: deno task manifest:check
 
+  ci-cd-check:
+    docker:
+      - image: denoland/deno:latest
+
+    steps:
+      - checkout
+
+      # Skip unless the PR carries the CI/CD label
+      - run:
+          name: Skip unless CI/CD label
+          command: |
+            apt-get update && apt-get install -y jq
+
+            if [ -z "$CIRCLE_PULL_REQUEST" ]; then
+              echo "Not a PR, skipping CI/CD check"
+              circleci step halt
+            fi
+
+            PR_NUMBER=$(echo $CIRCLE_PULL_REQUEST | sed 's#.*/pull/##')
+
+            LABELS=$(curl -s \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME/issues/$PR_NUMBER/labels)
+
+            if ! echo "$LABELS" | jq -e 'any(.[]; .name == "CI/CD")' > /dev/null 2>&1; then
+              echo "PR #$PR_NUMBER has no CI/CD label, skipping CI/CD checks"
+              circleci step halt
+            fi
+
+            echo "CI/CD label present on PR #$PR_NUMBER, running CI/CD checks"
+
+      # Validate CircleCI configs
+      - run:
+          name: Validate CircleCI config syntax
+          command: |
+            for f in .circleci/config.yml .circleci/release.yml .circleci/deps.yml; do
+              deno run -A --quiet -e "import { parse } from 'jsr:@std/yaml'; parse(await Deno.readTextFile('$f')); console.log('OK  $f');"
+            done
+
+      # Check deno tasks used by CI exist in deno.json
+      - run:
+          name: Validate deno tasks referenced by CI
+          command: |
+            MISSING=0
+            for t in lint typecheck test theme:check theme:lint manifest:check build release; do
+              if ! deno eval "import { parse } from 'jsr:@std/yaml'; const cfg = await Deno.readTextFile('deno.json'); const j = JSON.parse(cfg); if (!j.tasks || !(j.tasks['$t'])) { Deno.exit(1) }" 2>/dev/null; then
+                echo "MISSING task: $t"
+                MISSING=1
+              fi
+            done
+            if [ "$MISSING" -ne 0 ]; then
+              echo "ERROR: CI references tasks missing from deno.json"
+              exit 1
+            fi
+            echo "All CI tasks resolved"
+
+      # Lint + typecheck the CI-relevant tooling
+      - run:
+          name: Typecheck CI tooling
+          command: deno task typecheck
+
   build:
     docker:
       - image: denoland/deno:latest
@@ -286,6 +348,7 @@ workflows:
       - theme-check
       - theme-lint
       - manifest-check
+      - ci-cd-check
       - build:
           requires:
             - test

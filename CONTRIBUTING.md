@@ -184,6 +184,16 @@ chore: bump stylelint
 
 Maintainers come from the community. If you consistently contribute high-quality PRs, help triage issues and participate in discussions, we'll be happy to invite you to the team.
 
+## CI/CD label
+
+Pull requests that touch the build pipeline or the CI/CD surface (`tasks/`, `.circleci/`, `deno.json`) should be marked with the `CI/CD` label.
+
+When that label is present on the PR, the `ci-cd-check` job in the CircleCI `ci` workflow validates the CircleCI configs, checks that every task referenced by CI exists in `deno.json`, and typechecks the tooling. Without the label, the job is skipped — so remember to apply it **before** the final push so the pipeline picks it up.
+
+| Label | Effect |
+|-------|--------|
+| `CI/CD` | Activates the `ci-cd-check` job on the PR |
+
 ## Attribution
 
 This guide is based on the [contributing-gen](https://github.com/bttger/contributing-gen), the Spicetify Marketplace contributing guide, and [all-contributors](https://allcontributors.org/). Make your own!

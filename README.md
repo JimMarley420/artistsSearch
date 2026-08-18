@@ -132,6 +132,8 @@ This project follows [Semantic Versioning](https://semver.org/) (`vMAJOR.MINOR.P
 
 Every merge to `master` is tagged automatically by **CircleCI** and published as a [GitHub Release](https://github.com/JimMarley420/spicetify-extension/releases).
 
+Pull requests that touch the build pipeline must carry the `CI/CD` label: it activates the `ci-cd-check` job in the CircleCI workflow (see [CONTRIBUTING.md](CONTRIBUTING.md#cicd-label)).
+
 ---
 
 ## Resources
