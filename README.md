@@ -2,7 +2,7 @@
 
 # Spicetify Extensions & Themes
 
-A curated collection of **Spicetify** extensions and themes for Spotify.
+A curated collection of **Spicetify** extensions and themes for Spotify by Jimmy Marley.
 
 [![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/JimMarley420/spicetify-extension?utm_source=oss&utm_medium=github&utm_campaign=JimMarley420%2Fspicetify-extension&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
 
