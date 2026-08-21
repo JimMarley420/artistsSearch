@@ -7,7 +7,8 @@ We take security issues seriously. Please **do not** report security vulnerabili
 Instead, report them privately so we can fix them before disclosure. You can reach out directly through one of the following channels:
 
 - **[GitHub Security Advisories](https://github.com/JimMarley420/spicetify-extension/security/advisories/new)** — preferred, private and tracked
-- **Email / Discord:** direct message a maintainer (see [README](https://github.com/JimMarley420/spicetify-extension#readme))
+- **Email / Discord:** direct message a maintainer (see [README](https://github.com/JimMarley420/spicetify-extension#readme)) Discord : jimmy_marley
+- Any support via github issue or via https://multichat.cloud/support
 
 Please include as much of the following information as possible:
 
